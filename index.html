@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>离线族谱应用</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="top-bar">
+    <button id="btn-import-json">导入 JSON</button>
+    <button id="btn-import-md">导入 Markdown</button>
+    <button id="btn-export-json">导出 JSON</button>
+    <button id="btn-export-md">导出 Markdown</button>
+    <button id="btn-add-person">新增人员</button>
+</div>
+
+<div id="layout">
+    <div id="left-panel">
+        <h3>人员列表</h3>
+        <ul id="person-list"></ul>
+    </div>
+
+    <div id="center-panel">
+        <h3>族谱树</h3>
+        <svg id="tree-area" width="800" height="600"></svg>
+    </div>
+
+    <div id="right-panel">
+        <h3>人员信息</h3>
+        <div id="person-editor">请选择人员</div>
+    </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

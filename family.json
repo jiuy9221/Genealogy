@@ -1,0 +1,35 @@
+{
+  "persons": [
+    {
+      "id": "p1",
+      "name": "张三",
+      "gender": "male",
+      "birth": "1950-01-01",
+      "death": "",
+      "notes": "家族第一代"
+    },
+    {
+      "id": "p2",
+      "name": "李四",
+      "gender": "female",
+      "birth": "1952-02-02",
+      "death": "",
+      "notes": ""
+    },
+    {
+      "id": "p3",
+      "name": "张小明",
+      "gender": "male",
+      "birth": "1975-03-03",
+      "death": "",
+      "notes": ""
+    }
+  ],
+  "relationships": [
+    { "parent": "p1", "child": "p3" },
+    { "parent": "p2", "child": "p3" }
+  ],
+  "marriages": [
+    { "spouse1": "p1", "spouse2": "p2" }
+  ]
+}
