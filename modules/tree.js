@@ -1,6 +1,6 @@
 // modules/tree.js - 族谱树布局与 SVG 渲染
 
-const NODE_W = 130;
+const NODE_W = 148;
 const NODE_H = 68;
 const H_GAP = 28;      // 节点间最小水平间距
 const V_GAP = 100;     // 代际垂直间距
@@ -345,27 +345,45 @@ function renderTree(data, svgEl_el, onNodeClick) {
         topBar.setAttribute("fill", isMale ? "#3b82f6" : isFemale ? "#ec4899" : "#94a3b8");
         g.appendChild(topBar);
 
+        // 头像圆（首字）
+        const avatarBg = svgEl("circle", {
+            cx: "22", cy: "36", r: "15",
+            fill: isMale ? "#dbeafe" : isFemale ? "#fce7f3" : "#f1f5f9",
+            stroke: strokeColor, "stroke-width": "1.5"
+        });
+        g.appendChild(avatarBg);
+        const avatarTxt = svgEl("text", {
+            x: "22", y: "36",
+            "text-anchor": "middle", "dominant-baseline": "middle",
+            "font-size": "14", "font-weight": "800",
+            fill: isMale ? "#1d4ed8" : isFemale ? "#db2777" : "#64748b"
+        });
+        avatarTxt.textContent = p.name.charAt(0);
+        g.appendChild(avatarTxt);
+
         // 姓名
-        const nameT = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        nameT.setAttribute("x", NODE_W / 2); nameT.setAttribute("y", NODE_H / 2 - 4);
-        nameT.setAttribute("text-anchor", "middle"); nameT.setAttribute("dominant-baseline", "middle");
-        nameT.setAttribute("font-size", "15"); nameT.setAttribute("font-weight", "700");
-        nameT.setAttribute("fill", "#1e293b");
-        nameT.textContent = p.name.length > 8 ? p.name.slice(0, 8) + "…" : p.name;
+        const nameT = svgEl("text", {
+            x: "44", y: "28",
+            "text-anchor": "start", "dominant-baseline": "middle",
+            "font-size": "14", "font-weight": "700",
+            fill: "#1e293b"
+        });
+        nameT.textContent = p.name.length > 6 ? p.name.slice(0, 6) + "…" : p.name;
         g.appendChild(nameT);
 
         // 生卒年
         const lifespan = (() => {
             const b = p.birth ? p.birth.slice(0, 4) : "?";
             if (p.death) return `${b}–${p.death.slice(0, 4)}`;
-            if (p.birth) return `生于 ${b}`;
+            if (p.birth) return `b.${b}`;
             return "";
         })();
         if (lifespan) {
-            const lifeT = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            lifeT.setAttribute("x", NODE_W / 2); lifeT.setAttribute("y", NODE_H - 12);
-            lifeT.setAttribute("text-anchor", "middle"); lifeT.setAttribute("dominant-baseline", "middle");
-            lifeT.setAttribute("font-size", "10"); lifeT.setAttribute("fill", "#64748b");
+            const lifeT = svgEl("text", {
+                x: "44", y: "50",
+                "text-anchor": "start", "dominant-baseline": "middle",
+                "font-size": "10", fill: "#64748b"
+            });
             lifeT.textContent = lifespan;
             g.appendChild(lifeT);
         }

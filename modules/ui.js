@@ -410,3 +410,94 @@ function showToast(msg, duration = 2500) {
 // 供外部调用
 window.showToast = showToast;
 function getSelectedId() { return _selectedId; }
+
+// ─── 统计视图 ─────────────────────────────────────────────────────────
+function showStatsModal() {
+    const s = computeStats(_data);
+    if (s.total === 0) { showToast("暂无人员数据"); return; }
+
+    const pct = n => s.total ? Math.round(n / s.total * 100) : 0;
+    const bodyHTML = `
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-value">${s.total}</div>
+    <div class="stat-label">总人数</div>
+  </div>
+  <div class="stat-card male">
+    <div class="stat-value">${s.males} <span class="stat-pct">${pct(s.males)}%</span></div>
+    <div class="stat-label">男性</div>
+  </div>
+  <div class="stat-card female">
+    <div class="stat-value">${s.females} <span class="stat-pct">${pct(s.females)}%</span></div>
+    <div class="stat-label">女性</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">${s.generations}</div>
+    <div class="stat-label">代际层数</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">${s.marriages}</div>
+    <div class="stat-label">婚姻对数</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-value">${s.avgLifespan !== null ? s.avgLifespan + "<span class='stat-pct'> 岁</span>" : "—"}</div>
+    <div class="stat-label">平均寿命</div>
+  </div>
+</div>
+${s.maxChildrenPerson ? `
+<div class="stats-highlight">
+  <span class="stats-hl-label">子女最多</span>
+  <strong>${s.maxChildrenPerson.name}</strong>&thinsp;——&thinsp;${s.maxChildren} 位子女
+</div>` : ""}
+${s.oldest ? `
+<div class="stats-highlight">
+  <span class="stats-hl-label">最年长者</span>
+  <strong>${s.oldest.name}</strong>&thinsp;——&thinsp;生于 ${s.oldest.birth.slice(0, 4)} 年
+</div>` : ""}`;
+
+    showModal("族谱统计", bodyHTML, () => {}, "关闭");
+}
+
+// ─── 导出族谱树为 PNG ──────────────────────────────────────────────────
+function exportTreeAsPNG() {
+    const svg = document.getElementById("tree-area");
+    const w = parseFloat(svg.getAttribute("width"))  || 0;
+    const h = parseFloat(svg.getAttribute("height")) || 0;
+    if (!w || !h) { showToast("族谱树为空，无法导出"); return; }
+
+    const vb = (svg.getAttribute("viewBox") || "0 0 0 0").split(" ");
+    const clone = svg.cloneNode(true);
+    clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    clone.setAttribute("font-family", "Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif");
+
+    // 嵌入背景色
+    const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    bg.setAttribute("x", vb[0]); bg.setAttribute("y", vb[1]);
+    bg.setAttribute("width", w); bg.setAttribute("height", h);
+    bg.setAttribute("fill", "#f4f6fa");
+    clone.insertBefore(bg, clone.firstChild);
+
+    const serialized = new XMLSerializer().serializeToString(clone);
+    const blob = new Blob([serialized], { type: "image/svg+xml;charset=utf-8" });
+    const url  = URL.createObjectURL(blob);
+
+    const img = new Image();
+    img.onload = () => {
+        const scale  = 2;
+        const canvas = document.createElement("canvas");
+        canvas.width  = w * scale;
+        canvas.height = h * scale;
+        const ctx = canvas.getContext("2d");
+        ctx.scale(scale, scale);
+        ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        const dateStr = new Date().toLocaleDateString("zh-CN").replace(/\//g, "-");
+        const a = document.createElement("a");
+        a.download = `族谱_${dateStr}.png`;
+        a.href = canvas.toDataURL("image/png");
+        a.click();
+        showToast("PNG 已导出（2× 高清）");
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); showToast("PNG 导出失败，请使用截图工具"); };
+    img.src = url;
+}

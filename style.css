@@ -464,6 +464,70 @@ mark { background: #fef08a; border-radius: 2px; padding: 0 1px; }
 }
 .toast.toast-show { opacity: 1; transform: none; }
 
+/* ===== 统计按钮 ===== */
+.btn-stats {
+    color: var(--color-primary);
+    border-color: #bfdbfe;
+    background: #eff6ff;
+}
+.btn-stats:hover { background: #dbeafe; }
+
+/* ===== 统计模态框 ===== */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.stat-card {
+    background: #f8fafc;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 14px 10px 10px;
+    text-align: center;
+}
+.stat-card.male   { background: var(--color-male-bg);   border-color: var(--color-male-border); }
+.stat-card.female { background: var(--color-female-bg); border-color: var(--color-female-border); }
+.stat-value {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--color-primary);
+    line-height: 1.1;
+}
+.stat-card.male   .stat-value { color: #1d4ed8; }
+.stat-card.female .stat-value { color: #db2777; }
+.stat-pct { font-size: 14px; font-weight: 500; opacity: .7; }
+.stat-label {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-top: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+.stats-highlight {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 13px;
+    background: #f8fafc;
+    border: 1px solid var(--color-border);
+    border-radius: 7px;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+.stats-hl-label {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    flex-shrink: 0;
+    background: #e2e8f0;
+    padding: 2px 7px;
+    border-radius: 4px;
+}
+
 /* ===== 响应式 ===== */
 @media (max-width: 900px) {
     :root { --left-w: 180px; --right-w: 230px; }

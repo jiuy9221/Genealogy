@@ -30,3 +30,19 @@
   - 打印/导出为 PNG 或 PDF
   - 人员头像（初始字母头像或上传图片）
   - 统计视图（成员数、代际数、平均寿命等）
+
+## 2026-05-02
+- 更新文件：modules/data.js、modules/tree.js、modules/ui.js、app.js、index.html、style.css
+- 新增功能：
+  - **data.js**：新增 `computeStats(data)` — BFS 计算代际层数、平均寿命（带出生+死亡年份者）、子女最多人员、最年长者（按出生年升序）。
+  - **tree.js**：NODE_W 从 130→148px；每个节点左侧增加**首字头像圆**（蓝/粉/灰按性别配色，显示姓名第一个字），名字与生卒年文本整体右移至 x=44，左对齐布局。生卒年格式精简为 `b.YYYY` / `YYYY–YYYY`。
+  - **ui.js**：新增 `showStatsModal()` — 3×2 统计卡片网格（总人数、男/女含百分比、代际层数、婚姻对数、平均寿命），附"子女最多""最年长者"高亮行；新增 `exportTreeAsPNG()` — 序列化当前 SVG 为 Blob，2× 高清 Canvas 渲染后下载 PNG，内嵌背景色，支持出错提示。
+  - **app.js**：新增 `autoFitTree()` — 首次加载时自动计算缩放比（min(containerW/svgW, containerH/svgH) × 0.88）居中适应视口，后续编辑保留用户操作状态；`_didInitialFit` 标志避免重复重置；新增 `setupExtraButtons()` 绑定「统计」「导出 PNG」「适应视口」三个按钮；键盘快捷键 `F` 触发适应视口。
+  - **index.html**：顶栏新增「导出 PNG」「📊 统计」按钮；缩放区新增「适应视口（⇱）」按钮；图例更新快捷键说明。
+  - **style.css**：新增 `.btn-stats`、`.stats-grid`、`.stat-card`（含 `.male`/`.female` 变体）、`.stat-value`、`.stat-pct`、`.stat-label`、`.stats-highlight`、`.stats-hl-label` 全套统计面板样式。
+- 下一步：
+  - 族谱树节点拖拽重排（手动微调位置）
+  - 打印优化（@media print 隐藏面板，仅输出树图）
+  - 人员照片上传（base64 存储到 localStorage）
+  - 族谱分享：生成可分享的 URL hash（内嵌压缩 JSON）
+  - 多语言支持（繁体中文 / English 切换）

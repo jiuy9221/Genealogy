@@ -5,6 +5,7 @@ let svgPanOffset = { x: 0, y: 0 };
 let svgScale = 1;
 let isPanning = false;
 let panStart = { x: 0, y: 0 };
+let _didInitialFit = false;
 
 window.onload = async () => {
     const local = loadFromLocal();
@@ -24,6 +25,7 @@ window.onload = async () => {
     refresh();
     setupTreePan();
     setupKeyboard();
+    setupExtraButtons();
 };
 
 function initUI() {
@@ -42,11 +44,27 @@ function refresh() {
     const svg = document.getElementById("tree-area");
     renderTree(familyData, svg, id => selectPerson(id));
     applyTransform();
+    if (!_didInitialFit) {
+        requestAnimationFrame(() => { autoFitTree(); _didInitialFit = true; });
+    }
+}
+
+// ─── 自动适应视口 ───────────────────────────────────────────────────────
+function autoFitTree() {
+    const container = document.getElementById("center-panel");
+    const svg = document.getElementById("tree-area");
+    const svgW = parseFloat(svg.getAttribute("width"))  || 0;
+    const svgH = parseFloat(svg.getAttribute("height")) || 0;
+    if (!svgW || !svgH) return;
+    const newScale = Math.min(container.clientWidth / svgW, container.clientHeight / svgH, 1) * 0.88;
+    svgScale = Math.max(0.15, newScale);
+    svgPanOffset = { x: 0, y: 0 };
+    applyTransform();
 }
 
 // ─── 高亮树节点（ui.js 的 selectPerson 调用）────────────────────────
 window.highlightTreeNode = function(id) {
-    highlightNode(id); // 调用 tree.js 暴露的函数
+    highlightNode(id);
 };
 
 // ─── 键盘快捷键 ─────────────────────────────────────────────────────
@@ -70,13 +88,21 @@ function setupKeyboard() {
             e.preventDefault();
             document.getElementById("btn-export-json").click();
         }
-        // +/= 放大，- 缩小，0 重置
+        // +/= 放大，- 缩小，0 重置，F 适应视口
         if (!e.ctrlKey && !e.metaKey) {
             if (e.key === "+" || e.key === "=") { svgScale = Math.min(3, svgScale * 1.15); applyTransform(); }
             if (e.key === "-")                   { svgScale = Math.max(0.2, svgScale / 1.15); applyTransform(); }
             if (e.key === "0")                   { svgScale = 1; svgPanOffset = { x: 0, y: 0 }; applyTransform(); }
+            if (e.key === "f" || e.key === "F")  { autoFitTree(); }
         }
     });
+}
+
+// ─── 额外按钮绑定 ─────────────────────────────────────────────────────
+function setupExtraButtons() {
+    document.getElementById("btn-stats").addEventListener("click", showStatsModal);
+    document.getElementById("btn-export-png").addEventListener("click", exportTreeAsPNG);
+    document.getElementById("btn-fit-view").addEventListener("click", autoFitTree);
 }
 
 // ─── SVG 平移 & 缩放 ─────────────────────────────────────────────────

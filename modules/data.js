@@ -162,3 +162,51 @@ function removeMarriage(data, spouse1Id, spouse2Id) {
           (m.spouse1 === spouse2Id && m.spouse2 === spouse1Id))
     );
 }
+
+// --- 统计分析 ---
+function computeStats(data) {
+    const total = data.persons.length;
+    if (total === 0) return { total: 0, males: 0, females: 0, unknown: 0, generations: 0, marriages: 0, avgLifespan: null, maxChildrenPerson: null, maxChildren: 0, oldest: null };
+
+    const males   = data.persons.filter(p => p.gender === "male").length;
+    const females = data.persons.filter(p => p.gender === "female").length;
+    const unknown = total - males - females;
+    const marriages = data.marriages.length;
+
+    // BFS 代际数
+    const childrenOf = id => data.relationships.filter(r => r.parent === id).map(r => r.child);
+    const parentsOf  = id => data.relationships.filter(r => r.child  === id).map(r => r.parent);
+    const roots = data.persons.filter(p => parentsOf(p.id).length === 0).map(p => p.id);
+    const levelMap = {};
+    const queue = roots.map(id => ({ id, level: 0 }));
+    const visited = new Set();
+    while (queue.length) {
+        const { id, level } = queue.shift();
+        if (visited.has(id)) { if (level > (levelMap[id] ?? 0)) levelMap[id] = level; continue; }
+        visited.add(id);
+        levelMap[id] = level;
+        childrenOf(id).forEach(cid => queue.push({ id: cid, level: level + 1 }));
+    }
+    data.persons.forEach(p => { if (levelMap[p.id] === undefined) levelMap[p.id] = 0; });
+    const generations = Math.max(...Object.values(levelMap)) + 1;
+
+    // 平均寿命
+    const lifespans = data.persons
+        .filter(p => p.birth && p.death)
+        .map(p => { const b = parseInt(p.birth), d = parseInt(p.death); return (!isNaN(b) && !isNaN(d) && d > b && d - b < 130) ? d - b : null; })
+        .filter(n => n !== null);
+    const avgLifespan = lifespans.length ? Math.round(lifespans.reduce((a, b) => a + b, 0) / lifespans.length) : null;
+
+    // 子女最多
+    const cc = {};
+    data.relationships.forEach(r => { cc[r.parent] = (cc[r.parent] || 0) + 1; });
+    const top = Object.entries(cc).sort((a, b) => b[1] - a[1])[0];
+    const maxChildrenPerson = top ? data.persons.find(p => p.id === top[0]) || null : null;
+    const maxChildren = top ? top[1] : 0;
+
+    // 最年长（出生年最早）
+    const withBirth = data.persons.filter(p => p.birth && !isNaN(parseInt(p.birth)));
+    const oldest = withBirth.slice().sort((a, b) => parseInt(a.birth) - parseInt(b.birth))[0] || null;
+
+    return { total, males, females, unknown, generations, marriages, avgLifespan, maxChildrenPerson, maxChildren, oldest };
+}
