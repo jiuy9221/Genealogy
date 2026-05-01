@@ -7,7 +7,6 @@ let isPanning = false;
 let panStart = { x: 0, y: 0 };
 
 window.onload = async () => {
-    // 优先 localStorage，其次 family.json
     const local = loadFromLocal();
     if (local) {
         familyData = local;
@@ -24,6 +23,7 @@ window.onload = async () => {
     initUI();
     refresh();
     setupTreePan();
+    setupKeyboard();
 };
 
 function initUI() {
@@ -40,13 +40,46 @@ function refresh() {
     renderPersonList(familyData);
     document.getElementById("person-count").textContent = familyData.persons.length;
     const svg = document.getElementById("tree-area");
-    renderTree(familyData, svg, id => {
-        selectPerson(id);
-    });
+    renderTree(familyData, svg, id => selectPerson(id));
     applyTransform();
 }
 
-// --- SVG 平移 & 缩放 ---
+// ─── 高亮树节点（ui.js 的 selectPerson 调用）────────────────────────
+window.highlightTreeNode = function(id) {
+    highlightNode(id); // 调用 tree.js 暴露的函数
+};
+
+// ─── 键盘快捷键 ─────────────────────────────────────────────────────
+function setupKeyboard() {
+    document.addEventListener("keydown", e => {
+        // ESC：关闭模态框
+        if (e.key === "Escape") {
+            const overlay = document.getElementById("modal-overlay");
+            if (overlay.style.display !== "none") {
+                overlay.style.display = "none";
+                return;
+            }
+        }
+        // Ctrl/Cmd + N：新增人员
+        if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+            e.preventDefault();
+            document.getElementById("btn-add-person").click();
+        }
+        // Ctrl/Cmd + E：导出 JSON
+        if ((e.ctrlKey || e.metaKey) && e.key === "e") {
+            e.preventDefault();
+            document.getElementById("btn-export-json").click();
+        }
+        // +/= 放大，- 缩小，0 重置
+        if (!e.ctrlKey && !e.metaKey) {
+            if (e.key === "+" || e.key === "=") { svgScale = Math.min(3, svgScale * 1.15); applyTransform(); }
+            if (e.key === "-")                   { svgScale = Math.max(0.2, svgScale / 1.15); applyTransform(); }
+            if (e.key === "0")                   { svgScale = 1; svgPanOffset = { x: 0, y: 0 }; applyTransform(); }
+        }
+    });
+}
+
+// ─── SVG 平移 & 缩放 ─────────────────────────────────────────────────
 function setupTreePan() {
     const container = document.getElementById("center-panel");
     const svg = document.getElementById("tree-area");
@@ -64,30 +97,34 @@ function setupTreePan() {
         panStart = { x: e.clientX - svgPanOffset.x, y: e.clientY - svgPanOffset.y };
         svg.style.cursor = "grabbing";
     });
-
     window.addEventListener("mousemove", e => {
         if (!isPanning) return;
         svgPanOffset = { x: e.clientX - panStart.x, y: e.clientY - panStart.y };
         applyTransform();
     });
-
     window.addEventListener("mouseup", () => {
         isPanning = false;
         document.getElementById("tree-area").style.cursor = "grab";
     });
 
-    document.getElementById("btn-zoom-in").addEventListener("click", () => {
-        svgScale = Math.min(3, svgScale * 1.2);
-        applyTransform();
-    });
-    document.getElementById("btn-zoom-out").addEventListener("click", () => {
-        svgScale = Math.max(0.2, svgScale / 1.2);
-        applyTransform();
-    });
-    document.getElementById("btn-zoom-reset").addEventListener("click", () => {
-        svgScale = 1; svgPanOffset = { x: 0, y: 0 };
-        applyTransform();
-    });
+    // 触摸平移
+    let touchStart = null;
+    svg.addEventListener("touchstart", e => {
+        if (e.touches.length === 1) {
+            touchStart = { x: e.touches[0].clientX - svgPanOffset.x, y: e.touches[0].clientY - svgPanOffset.y };
+        }
+    }, { passive: true });
+    svg.addEventListener("touchmove", e => {
+        if (touchStart && e.touches.length === 1) {
+            svgPanOffset = { x: e.touches[0].clientX - touchStart.x, y: e.touches[0].clientY - touchStart.y };
+            applyTransform();
+        }
+    }, { passive: true });
+    svg.addEventListener("touchend", () => { touchStart = null; });
+
+    document.getElementById("btn-zoom-in").addEventListener("click",    () => { svgScale = Math.min(3, svgScale * 1.2); applyTransform(); });
+    document.getElementById("btn-zoom-out").addEventListener("click",   () => { svgScale = Math.max(0.2, svgScale / 1.2); applyTransform(); });
+    document.getElementById("btn-zoom-reset").addEventListener("click", () => { svgScale = 1; svgPanOffset = { x: 0, y: 0 }; applyTransform(); });
 }
 
 function applyTransform() {
@@ -95,16 +132,3 @@ function applyTransform() {
     svg.style.transform = `translate(${svgPanOffset.x}px, ${svgPanOffset.y}px) scale(${svgScale})`;
     svg.style.transformOrigin = "center center";
 }
-
-// 高亮树节点（外部调用）
-window.highlightTreeNode = function(id) {
-    document.querySelectorAll("#tree-area rect").forEach(rect => {
-        rect.setAttribute("filter", "");
-    });
-    // 找对应 g，添加高亮
-    const svg = document.getElementById("tree-area");
-    const groups = svg.querySelectorAll("g > g");
-    groups.forEach(g => {
-        g.addEventListener && (g._personId = g._personId); // handled during render
-    });
-};

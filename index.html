@@ -11,10 +11,10 @@
 <!-- 顶栏 -->
 <div id="top-bar">
     <div id="top-bar-left">
-        <span id="app-title">&#127968; 族谱</span>
+        <span id="app-title">族谱</span>
     </div>
     <div id="top-bar-center">
-        <button class="btn-toolbar" id="btn-add-person">&#43; 新增人员</button>
+        <button class="btn-toolbar btn-primary" id="btn-add-person">&#43; 新增人员</button>
         <span class="sep"></span>
         <button class="btn-toolbar" id="btn-import-json">导入 JSON</button>
         <button class="btn-toolbar" id="btn-import-md">导入 MD</button>
@@ -24,9 +24,11 @@
         <button class="btn-toolbar btn-danger-light" id="btn-reset">清空数据</button>
     </div>
     <div id="top-bar-right">
-        <button class="btn-toolbar" id="btn-zoom-in" title="放大">&#43;</button>
-        <button class="btn-toolbar" id="btn-zoom-reset" title="重置">&#9673;</button>
-        <button class="btn-toolbar" id="btn-zoom-out" title="缩小">&#8722;</button>
+        <button class="btn-toolbar" id="btn-zoom-in"    title="放大 (+)">&#43;</button>
+        <button class="btn-toolbar" id="btn-zoom-reset" title="重置 (0)">&#9673;</button>
+        <button class="btn-toolbar" id="btn-zoom-out"   title="缩小 (-)">&#8722;</button>
+        <span class="sep"></span>
+        <span id="shortcut-hint" title="快捷键：Ctrl+N 新增 / +- 缩放 / 0 重置 / ESC 关闭">⌨ 快捷键</span>
     </div>
 </div>
 
@@ -36,7 +38,10 @@
     <div id="left-panel">
         <div class="panel-header">
             <h3>人员列表</h3>
-            <span id="person-count" class="count">0</span>
+            <span id="person-count" class="count-badge">0</span>
+        </div>
+        <div id="search-bar">
+            <input type="search" id="person-search" placeholder="&#128269; 搜索姓名…" autocomplete="off" />
         </div>
         <ul id="person-list"></ul>
     </div>
@@ -68,11 +73,14 @@
         </div>
         <div id="modal-body"></div>
         <div id="modal-footer">
-            <button id="modal-cancel" onclick="document.getElementById('modal-overlay').style.display='none'">取消</button>
+            <button id="modal-cancel">取消</button>
             <button id="modal-confirm" class="btn-primary">确认</button>
         </div>
     </div>
 </div>
+
+<!-- Toast 通知 -->
+<div id="toast-container"></div>
 
 <!-- 图例 -->
 <div id="legend">
@@ -80,6 +88,8 @@
     <span class="legend-item female">&#9632; 女性</span>
     <span class="legend-item line-parent">—— 亲子</span>
     <span class="legend-item line-spouse">- - 配偶</span>
+    <span class="legend-sep">|</span>
+    <span class="legend-item kbd">+/- 缩放 &nbsp; 0 重置 &nbsp; ESC 关闭</span>
 </div>
 
 <script src="modules/data.js"></script>
