@@ -91,6 +91,21 @@
       → refresh()
 ```
 
+## 数据模型扩展（v3）
+Person 对象新增 `photo` 字段（base64 data URL，空字符串表示无头像）：
+```json
+{ "id": "p1", "name": "张三", "gender": "male", "birth": "1950-01-01",
+  "death": "", "notes": "", "photo": "data:image/jpeg;base64,..." }
+```
+
+## 功能扩展（v3，2026-05-02）
+- **头像上传**：buildPersonForm 含文件选择器，FileReader 读为 base64 data URL，存入 person.photo
+  - tree.js 渲染：若 p.photo 非空，在 `<defs>` 中生成 `<clipPath id="avatar-clip-{id}">` 圆形遮罩，节点内用 `<image href>` 渲染照片
+  - ui.js 编辑器：renderPersonEditor 在头部显示圆形头像（有照片则 img，无照片则首字母）
+- **打印优化**：@media print 隐藏所有面板只保留 #tree-area，@page landscape 横向布局
+- **分享链接**：generateShareLink() 将数据序列化为 Unicode-safe base64，写入 URL hash `#share=...`；app.js 在 onload 中 tryLoadShareHash() 检测并解析
+
 ## 存储格式（localStorage）
 Key: `genealogy_familyData`
 Value: JSON.stringify({ persons, relationships, marriages })
+（person.photo 为 base64 字符串，可能较大，建议单个家庭照片控制在 300KB 以内）

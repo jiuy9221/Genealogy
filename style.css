@@ -528,6 +528,91 @@ mark { background: #fef08a; border-radius: 2px; padding: 0 1px; }
     border-radius: 4px;
 }
 
+/* ===== 分享按钮 ===== */
+.btn-share {
+    color: #7c3aed;
+    border-color: #ddd6fe;
+    background: #f5f3ff;
+}
+.btn-share:hover { background: #ede9fe; }
+
+/* ===== 头像上传（人员表单内）===== */
+.avatar-upload-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+}
+.avatar-preview-wrap {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    border: 2px dashed var(--color-border);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color .15s, box-shadow .15s;
+}
+.avatar-preview-wrap:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+.avatar-preview-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.avatar-initial {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--color-text-muted);
+    line-height: 1;
+    user-select: none;
+}
+.avatar-upload-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.avatar-size-hint {
+    font-size: 10px;
+    color: #94a3b8;
+    line-height: 1.4;
+}
+
+/* ===== 编辑器面板头像 ===== */
+.editor-avatar-img {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--color-border);
+    flex-shrink: 0;
+}
+.editor-avatar-initial {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 800;
+    flex-shrink: 0;
+    border: 2px solid var(--color-border);
+}
+.editor-person-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
 /* ===== 响应式 ===== */
 @media (max-width: 900px) {
     :root { --left-w: 180px; --right-w: 230px; }
@@ -536,4 +621,41 @@ mark { background: #fef08a; border-radius: 2px; padding: 0 1px; }
     #left-panel { display: none; }
     :root { --right-w: 200px; }
     #legend { left: 50%; }
+}
+
+/* ===== 打印优化 ===== */
+@media print {
+    #top-bar, #left-panel, #right-panel,
+    #legend, #toast-container { display: none !important; }
+
+    body {
+        background: white !important;
+        overflow: visible !important;
+        height: auto !important;
+    }
+    #layout {
+        display: block !important;
+        overflow: visible !important;
+        height: auto !important;
+    }
+    #center-panel {
+        width: 100vw !important;
+        height: auto !important;
+        overflow: visible !important;
+        background: white !important;
+    }
+    #tree-container {
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+        display: block !important;
+    }
+    #tree-area {
+        transform: none !important;
+        display: block !important;
+        max-width: 100% !important;
+        height: auto !important;
+    }
+
+    @page { size: landscape; margin: 12mm; }
 }

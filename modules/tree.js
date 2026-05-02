@@ -283,13 +283,23 @@ function renderTree(data, svgEl_el, onNodeClick) {
     svgEl_el.setAttribute("width",  maxX - minX);
     svgEl_el.setAttribute("height", maxY - minY);
 
-    // defs：高亮 filter
+    // defs：高亮 filter + 头像 clipPath
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
     defs.innerHTML = `
       <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="4" result="blur"/>
         <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>`;
+    // 为有头像的成员添加 clipPath（圆形裁剪）
+    data.persons.forEach(p => {
+        if (!p.photo) return;
+        const clipPath = document.createElementNS("http://www.w3.org/2000/svg", "clipPath");
+        clipPath.setAttribute("id", `avatar-clip-${p.id}`);
+        const circ = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circ.setAttribute("cx", "22"); circ.setAttribute("cy", "36"); circ.setAttribute("r", "15");
+        clipPath.appendChild(circ);
+        defs.appendChild(clipPath);
+    });
     svgEl_el.appendChild(defs);
 
     // 代际背景条
@@ -345,21 +355,38 @@ function renderTree(data, svgEl_el, onNodeClick) {
         topBar.setAttribute("fill", isMale ? "#3b82f6" : isFemale ? "#ec4899" : "#94a3b8");
         g.appendChild(topBar);
 
-        // 头像圆（首字）
-        const avatarBg = svgEl("circle", {
-            cx: "22", cy: "36", r: "15",
-            fill: isMale ? "#dbeafe" : isFemale ? "#fce7f3" : "#f1f5f9",
-            stroke: strokeColor, "stroke-width": "1.5"
-        });
-        g.appendChild(avatarBg);
-        const avatarTxt = svgEl("text", {
-            x: "22", y: "36",
-            "text-anchor": "middle", "dominant-baseline": "middle",
-            "font-size": "14", "font-weight": "800",
-            fill: isMale ? "#1d4ed8" : isFemale ? "#db2777" : "#64748b"
-        });
-        avatarTxt.textContent = p.name.charAt(0);
-        g.appendChild(avatarTxt);
+        // 头像圆（照片或首字）
+        if (p.photo) {
+            // 照片头像（圆形裁剪）
+            const photoBorder = svgEl("circle", {
+                cx: "22", cy: "36", r: "15",
+                fill: "none", stroke: strokeColor, "stroke-width": "1.5"
+            });
+            g.appendChild(photoBorder);
+            const photoImg = document.createElementNS("http://www.w3.org/2000/svg", "image");
+            photoImg.setAttribute("href", p.photo);
+            photoImg.setAttribute("x", "7"); photoImg.setAttribute("y", "21");
+            photoImg.setAttribute("width", "30"); photoImg.setAttribute("height", "30");
+            photoImg.setAttribute("clip-path", `url(#avatar-clip-${p.id})`);
+            photoImg.setAttribute("preserveAspectRatio", "xMidYMid slice");
+            g.appendChild(photoImg);
+        } else {
+            // 首字文本头像
+            const avatarBg = svgEl("circle", {
+                cx: "22", cy: "36", r: "15",
+                fill: isMale ? "#dbeafe" : isFemale ? "#fce7f3" : "#f1f5f9",
+                stroke: strokeColor, "stroke-width": "1.5"
+            });
+            g.appendChild(avatarBg);
+            const avatarTxt = svgEl("text", {
+                x: "22", y: "36",
+                "text-anchor": "middle", "dominant-baseline": "middle",
+                "font-size": "14", "font-weight": "800",
+                fill: isMale ? "#1d4ed8" : isFemale ? "#db2777" : "#64748b"
+            });
+            avatarTxt.textContent = p.name.charAt(0);
+            g.appendChild(avatarTxt);
+        }
 
         // 姓名
         const nameT = svgEl("text", {

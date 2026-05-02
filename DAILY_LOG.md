@@ -46,3 +46,24 @@
   - 人员照片上传（base64 存储到 localStorage）
   - 族谱分享：生成可分享的 URL hash（内嵌压缩 JSON）
   - 多语言支持（繁体中文 / English 切换）
+
+## 2026-05-02（第二次推进）
+- 更新文件：family.json、style.css、modules/tree.js、modules/ui.js、index.html、app.js、architecture.md
+- 新增功能：
+  - **family.json**：扩展为三代七口示例数据（张大树 & 王桂花 → 张三 & 李四 → 张小明/小红/小刚），含出生/死亡年份。
+  - **头像上传**（ui.js + tree.js）：
+    - 新增/编辑人员表单加入「头像照片」上传区，点击圆形预览或按钮触发文件选择器，FileReader 读取为 base64 data URL 存入 person.photo（≤300KB 限制）；
+    - 右侧编辑面板头部改为 `editor-person-meta` 布局，有照片显示 `<img>` 圆形头像，无照片显示性别配色首字母圆；
+    - tree.js 节点渲染：有 `p.photo` 时在 `<defs>` 生成 `clipPath`，节点内用 `<image href>` 圆形裁剪展示照片，无照片保留原首字母圆。
+  - **分享链接**（ui.js + app.js）：
+    - `generateShareLink()` 将族谱数据（照片字段剥离）序列化为 Unicode-safe base64，生成 `#share=...` URL，优先写入剪贴板，不支持时弹出复制对话框；
+    - app.js `tryLoadShareHash()` 在页面加载时检测 hash，自动解析并加载分享数据；
+    - 顶栏新增「🔗 分享」按钮。
+  - **打印优化**（style.css + app.js + index.html）：
+    - `@media print` CSS：隐藏顶栏/左右面板/图例/Toast，body/layout/center-panel 全宽可见，`#tree-area` 清除 transform，`@page landscape` 横向输出；
+    - 顶栏新增「🖨 打印」按钮（调用 `window.print()`），键盘快捷键 `Ctrl+P` 绑定。
+- 下一步：
+  - 族谱树节点拖拽重排（鼠标拖动节点到自定义位置）
+  - 多语言支持（繁体中文 / English 切换）
+  - 时间轴模式（横向展示各代际生卒时间线）
+  - 暗色主题（Dark Mode）切换

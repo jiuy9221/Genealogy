@@ -8,16 +8,25 @@ let panStart = { x: 0, y: 0 };
 let _didInitialFit = false;
 
 window.onload = async () => {
-    const local = loadFromLocal();
-    if (local) {
-        familyData = local;
+    // 检查 URL hash 中的分享数据
+    const shareData = tryLoadShareHash();
+    if (shareData) {
+        familyData = shareData;
+        saveToLocal(familyData);
+        history.replaceState(null, "", location.pathname);
+        showToast && setTimeout(() => showToast(`已加载分享数据（${familyData.persons.length} 人）`), 600);
     } else {
-        try {
-            const res = await fetch("family.json");
-            familyData = await res.json();
-            saveToLocal(familyData);
-        } catch {
-            familyData = { persons: [], relationships: [], marriages: [] };
+        const local = loadFromLocal();
+        if (local) {
+            familyData = local;
+        } else {
+            try {
+                const res = await fetch("family.json");
+                familyData = await res.json();
+                saveToLocal(familyData);
+            } catch {
+                familyData = { persons: [], relationships: [], marriages: [] };
+            }
         }
     }
 
@@ -27,6 +36,22 @@ window.onload = async () => {
     setupKeyboard();
     setupExtraButtons();
 };
+
+// ─── 解析 URL hash 中的分享数据 ──────────────────────────────────────
+function tryLoadShareHash() {
+    const hash = location.hash;
+    if (!hash.startsWith('#share=')) return null;
+    try {
+        const encoded = hash.slice(7);
+        // Unicode-safe atob
+        const json = decodeURIComponent(
+            atob(encoded).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
+        );
+        const parsed = JSON.parse(json);
+        if (!parsed.persons) return null;
+        return parsed;
+    } catch { return null; }
+}
 
 function initUI() {
     init(familyData, onDataChange);
@@ -88,6 +113,11 @@ function setupKeyboard() {
             e.preventDefault();
             document.getElementById("btn-export-json").click();
         }
+        // Ctrl/Cmd + P：打印
+        if ((e.ctrlKey || e.metaKey) && e.key === "p") {
+            e.preventDefault();
+            window.print();
+        }
         // +/= 放大，- 缩小，0 重置，F 适应视口
         if (!e.ctrlKey && !e.metaKey) {
             if (e.key === "+" || e.key === "=") { svgScale = Math.min(3, svgScale * 1.15); applyTransform(); }
@@ -103,6 +133,8 @@ function setupExtraButtons() {
     document.getElementById("btn-stats").addEventListener("click", showStatsModal);
     document.getElementById("btn-export-png").addEventListener("click", exportTreeAsPNG);
     document.getElementById("btn-fit-view").addEventListener("click", autoFitTree);
+    document.getElementById("btn-share").addEventListener("click", generateShareLink);
+    document.getElementById("btn-print").addEventListener("click", () => window.print());
 }
 
 // ─── SVG 平移 & 缩放 ─────────────────────────────────────────────────

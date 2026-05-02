@@ -209,12 +209,21 @@ function renderPersonEditor(id) {
         return `（${ey - by} 岁）`;
     })();
 
+    const avatarBg = p.gender === 'male' ? '#dbeafe' : p.gender === 'female' ? '#fce7f3' : '#f1f5f9';
+    const avatarColor = p.gender === 'male' ? '#1d4ed8' : p.gender === 'female' ? '#db2777' : '#64748b';
+    const avatarHtml = p.photo
+        ? `<img src="${p.photo}" class="editor-avatar-img" alt="头像" />`
+        : `<div class="editor-avatar-initial" style="background:${avatarBg};color:${avatarColor}">${p.name.charAt(0)}</div>`;
+
     panel.innerHTML = `
 <div class="editor-section">
   <div class="editor-header">
-    <div>
-      <h4>${p.name} <span class="tag ${genderClass}">${genderLabel}</span></h4>
-      ${age ? `<div class="age-hint">${age}</div>` : ""}
+    <div class="editor-person-meta">
+      ${avatarHtml}
+      <div>
+        <h4>${p.name} <span class="tag ${genderClass}">${genderLabel}</span></h4>
+        ${age ? `<div class="age-hint">${age}</div>` : ""}
+      </div>
     </div>
     <div class="editor-actions">
       <button class="btn-sm btn-primary" onclick="showEditPersonModal('${id}')">编辑</button>
@@ -319,10 +328,20 @@ window.showEditPersonModal = function(id) {
 };
 
 function buildPersonForm(p) {
+    const escAttr = s => (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    const escHtml = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const initChar = p?.name?.charAt(0) || '?';
+    const avatarContent = p?.photo
+        ? `<img src="${escAttr(p.photo)}" alt="头像" />`
+        : `<span class="avatar-initial">${escHtml(initChar)}</span>`;
+    const clearBtn = p?.photo
+        ? `<button type="button" class="btn-sm btn-danger-light" onclick="clearAvatar()">清除头像</button>`
+        : '';
+
     return `
 <div class="form-group">
   <label>姓名 *</label>
-  <input id="f-name" type="text" value="${p?.name || ""}" placeholder="请输入姓名" autofocus />
+  <input id="f-name" type="text" value="${escAttr(p?.name)}" placeholder="请输入姓名" autofocus />
 </div>
 <div class="form-row">
   <div class="form-group half">
@@ -337,16 +356,33 @@ function buildPersonForm(p) {
 <div class="form-row">
   <div class="form-group half">
     <label>出生日期</label>
-    <input id="f-birth" type="date" value="${p?.birth || ""}" />
+    <input id="f-birth" type="date" value="${escAttr(p?.birth)}" />
   </div>
   <div class="form-group half">
     <label>逝世日期</label>
-    <input id="f-death" type="date" value="${p?.death || ""}" />
+    <input id="f-death" type="date" value="${escAttr(p?.death)}" />
   </div>
 </div>
 <div class="form-group">
+  <label>头像照片</label>
+  <div class="avatar-upload-area">
+    <div class="avatar-preview-wrap" id="avatar-preview-wrap"
+         onclick="document.getElementById('f-photo-file').click()" title="点击上传照片">
+      ${avatarContent}
+    </div>
+    <div class="avatar-upload-btns">
+      <button type="button" class="btn-sm" onclick="document.getElementById('f-photo-file').click()">上传图片</button>
+      ${clearBtn}
+      <span class="avatar-size-hint">支持 JPG/PNG<br>≤ 300 KB</span>
+    </div>
+    <input type="file" id="f-photo-file" accept="image/*" style="display:none"
+           onchange="handleAvatarUpload(event)" />
+  </div>
+  <input type="hidden" id="f-photo" value="${escAttr(p?.photo)}" />
+</div>
+<div class="form-group">
   <label>备注</label>
-  <textarea id="f-notes" rows="3" placeholder="职位、籍贯、其他信息…">${p?.notes || ""}</textarea>
+  <textarea id="f-notes" rows="3" placeholder="职位、籍贯、其他信息…">${escHtml(p?.notes)}</textarea>
 </div>`;
 }
 
@@ -373,7 +409,8 @@ function showModal(title, bodyHTML, onConfirm, confirmLabel = "确认") {
                 gender: document.getElementById("f-gender")?.value  || "",
                 birth:  document.getElementById("f-birth")?.value   || "",
                 death:  document.getElementById("f-death")?.value   || "",
-                notes:  document.getElementById("f-notes")?.value.trim() || ""
+                notes:  document.getElementById("f-notes")?.value.trim() || "",
+                photo:  document.getElementById("f-photo")?.value   || ""
             });
         } else {
             onConfirm();
@@ -457,6 +494,85 @@ ${s.oldest ? `
 
     showModal("族谱统计", bodyHTML, () => {}, "关闭");
 }
+
+// ─── 头像上传 & 清除 ────────────────────────────────────────────────────
+window.handleAvatarUpload = function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 307200) { // 300KB
+        showToast("图片过大，请选择 300KB 以内的图片", 3000);
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = ev => {
+        const dataUrl = ev.target.result;
+        document.getElementById("f-photo").value = dataUrl;
+        const wrap = document.getElementById("avatar-preview-wrap");
+        if (wrap) wrap.innerHTML = `<img src="${dataUrl}" alt="头像" />`;
+        showToast("头像已上传，保存后生效");
+    };
+    reader.readAsDataURL(file);
+};
+
+window.clearAvatar = function() {
+    document.getElementById("f-photo").value = "";
+    const wrap = document.getElementById("avatar-preview-wrap");
+    const name = document.getElementById("f-name")?.value?.trim() || "?";
+    if (wrap) wrap.innerHTML = `<span class="avatar-initial">${name.charAt(0) || '?'}</span>`;
+};
+
+// ─── 生成分享链接 ────────────────────────────────────────────────────────
+function generateShareLink() {
+    if (!_data || !_data.persons.length) {
+        showToast("暂无数据，无法生成链接");
+        return;
+    }
+    // 剥离 photo 字段（可能很大），仅分享结构数据
+    const shareData = {
+        persons:       _data.persons.map(p => ({ ...p, photo: "" })),
+        relationships: _data.relationships,
+        marriages:     _data.marriages
+    };
+    const json = JSON.stringify(shareData);
+    try {
+        // Unicode-safe base64
+        const encoded = btoa(
+            encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (m, p1) =>
+                String.fromCharCode(parseInt(p1, 16))
+            )
+        );
+        if (encoded.length > 60000) {
+            showToast("族谱数据过大，建议使用「导出 JSON」分享", 4000);
+            return;
+        }
+        const url = location.href.split('#')[0] + '#share=' + encoded;
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url)
+                .then(() => showToast("分享链接已复制到剪贴板！"))
+                .catch(() => promptShareUrl(url));
+        } else {
+            promptShareUrl(url);
+        }
+    } catch {
+        showToast("生成分享链接失败");
+    }
+}
+function promptShareUrl(url) {
+    const modal = document.createElement("div");
+    modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:3000";
+    modal.innerHTML = `<div style="background:#fff;border-radius:12px;padding:24px;width:480px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+      <div style="font-weight:700;font-size:15px;margin-bottom:12px">分享链接</div>
+      <textarea style="width:100%;height:80px;border:1.5px solid #e0e3e8;border-radius:7px;padding:8px;font-size:12px;resize:none" readonly>${url}</textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button style="padding:6px 18px;border:1px solid #e0e3e8;border-radius:6px;cursor:pointer;font-size:13px">关闭</button>
+      </div>
+    </div>`;
+    modal.querySelector("button").onclick = () => document.body.removeChild(modal);
+    modal.addEventListener("click", e => { if (e.target === modal) document.body.removeChild(modal); });
+    document.body.appendChild(modal);
+    modal.querySelector("textarea").select();
+}
+window.generateShareLink = generateShareLink;
 
 // ─── 导出族谱树为 PNG ──────────────────────────────────────────────────
 function exportTreeAsPNG() {
