@@ -2,34 +2,80 @@
 
 const NODE_W = 148;
 const NODE_H = 68;
-const H_GAP = 28;      // 节点间最小水平间距
-const V_GAP = 100;     // 代际垂直间距
-const SPOUSE_GAP = 12; // 配偶节点间距
+const H_GAP = 28;
+const V_GAP = 100;
+const SPOUSE_GAP = 12;
 
-// 模块级：存储当前渲染的节点 <g> 元素，供外部高亮调用
-const _nodeGroups = {}; // personId -> g element
+// ─── 模块级状态 ──────────────────────────────────────────────────────────
+const _nodeGroups    = {}; // personId -> <g>
+const _customOffsets = {}; // personId -> { dx, dy } 拖拽偏移（模块生命周期持久）
+let   _basePositions = {}; // 布局算法原始坐标（每次 render 刷新）
+let   _dragState     = null;
+let   _onDragEnd     = null;
+let   _wasDragging   = false;
+let   _dragHandlersInitialized = false;
+window._nodeDragActive = false;
 
-// ─── 辅助 SVG 创建函数 ───────────────────────────────────────────────
+// ─── 拖拽偏移 API（供 app.js 调用）──────────────────────────────────────
+function clearCustomOffsets() { Object.keys(_customOffsets).forEach(k => delete _customOffsets[k]); }
+function getCustomOffsets()   { return JSON.parse(JSON.stringify(_customOffsets)); }
+function setCustomOffsets(obj){ clearCustomOffsets(); Object.assign(_customOffsets, obj || {}); }
+function setDragEndCallback(fn){ _onDragEnd = fn; }
+
+// ─── 节点颜色（亮/暗主题自适应）──────────────────────────────────────────
+function getNodeColors(gender) {
+    const dark = document.body.classList.contains('dark-mode');
+    if (gender === 'male') return {
+        fill:       dark ? '#1a3a5c' : '#eff6ff',
+        stroke:     dark ? '#3b82f6' : '#93c5fd',
+        avatarFill: dark ? '#1e3a8a' : '#dbeafe',
+        avatarText: dark ? '#93c5fd' : '#1d4ed8',
+        barColor:   '#3b82f6',
+        nameColor:  dark ? '#bfdbfe' : '#1e293b',
+        lifeColor:  dark ? '#7dd3fc' : '#64748b'
+    };
+    if (gender === 'female') return {
+        fill:       dark ? '#4a1942' : '#fdf2f8',
+        stroke:     dark ? '#f472b6' : '#f9a8d4',
+        avatarFill: dark ? '#831843' : '#fce7f3',
+        avatarText: dark ? '#f9a8d4' : '#db2777',
+        barColor:   '#ec4899',
+        nameColor:  dark ? '#fbcfe8' : '#1e293b',
+        lifeColor:  dark ? '#f9a8d4' : '#64748b'
+    };
+    return {
+        fill:       dark ? '#1e293b' : '#f8fafc',
+        stroke:     dark ? '#475569' : '#cbd5e1',
+        avatarFill: dark ? '#334155' : '#f1f5f9',
+        avatarText: dark ? '#94a3b8' : '#64748b',
+        barColor:   dark ? '#64748b' : '#94a3b8',
+        nameColor:  dark ? '#e2e8f0' : '#1e293b',
+        lifeColor:  dark ? '#94a3b8' : '#64748b'
+    };
+}
+function _lineColor()  { return document.body.classList.contains('dark-mode') ? '#475569' : '#94a3b8'; }
+function _bandFill()   { return document.body.classList.contains('dark-mode') ? 'rgba(30,41,59,0.55)' : 'rgba(241,245,249,0.6)'; }
+
+// ─── SVG 辅助 ────────────────────────────────────────────────────────────
 function svgEl(tag, attrs) {
     const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
     Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
     return el;
 }
-function drawLine(parent, x1, y1, x2, y2, color = "#94a3b8") {
-    parent.appendChild(svgEl("line", { x1, y1, x2, y2, stroke: color, "stroke-width": "1.8" }));
+function drawLine(parent, x1, y1, x2, y2, color) {
+    parent.appendChild(svgEl("line", { x1, y1, x2, y2, stroke: color || _lineColor(), "stroke-width": "1.8" }));
 }
-function drawPath(parent, d, color = "#94a3b8", dash = "") {
-    const attrs = { d, fill: "none", stroke: color, "stroke-width": "1.8" };
+function drawPath(parent, d, color, dash = "") {
+    const attrs = { d, fill: "none", stroke: color || _lineColor(), "stroke-width": "1.8" };
     if (dash) attrs["stroke-dasharray"] = dash;
     parent.appendChild(svgEl("path", attrs));
 }
 
-// ─── 布局算法 ─────────────────────────────────────────────────────────
+// ─── 布局算法 ─────────────────────────────────────────────────────────────
 function buildTreeLayout(data) {
     const { persons, relationships, marriages } = data;
-
     const childrenOf = id => relationships.filter(r => r.parent === id).map(r => r.child);
-    const parentsOf  = id => relationships.filter(r => r.child === id).map(r => r.parent);
+    const parentsOf  = id => relationships.filter(r => r.child  === id).map(r => r.parent);
     const spousesOf  = id => {
         const res = [];
         marriages.forEach(m => {
@@ -39,59 +85,48 @@ function buildTreeLayout(data) {
         return res;
     };
 
-    // Step 1: BFS 代际层级分配（取最大深度）
+    // BFS 代际分层
     const roots = persons.filter(p => parentsOf(p.id).length === 0).map(p => p.id);
     const levelMap = {};
     const queue = roots.map(id => ({ id, level: 0 }));
     const visited = new Set();
-
     while (queue.length > 0) {
         const { id, level } = queue.shift();
-        if (visited.has(id)) {
-            // 仍然尝试更新为更大层级（避免上升边）
-            if (level > (levelMap[id] ?? 0)) levelMap[id] = level;
-            continue;
-        }
+        if (visited.has(id)) { if (level > (levelMap[id] ?? 0)) levelMap[id] = level; continue; }
         visited.add(id);
         levelMap[id] = Math.max(levelMap[id] ?? 0, level);
         childrenOf(id).forEach(cid => queue.push({ id: cid, level: level + 1 }));
     }
     persons.forEach(p => { if (levelMap[p.id] === undefined) levelMap[p.id] = 0; });
 
-    // Step 2: 配偶聚合 —— 同一代的配偶归为一个 cluster
+    // 配偶聚合
     const assignedToCluster = new Set();
-    const clusters = []; // { level, ids: [main, spouse1, ...] }
-
+    const clusters = [];
     persons.forEach(p => {
         if (assignedToCluster.has(p.id)) return;
         const level = levelMap[p.id];
         const spouses = spousesOf(p.id).filter(s => !assignedToCluster.has(s) && levelMap[s] === level);
         const ids = [p.id, ...spouses];
-        ids.forEach(id => {
-            assignedToCluster.add(id);
-            levelMap[id] = level;
-        });
+        ids.forEach(id => { assignedToCluster.add(id); levelMap[id] = level; });
         clusters.push({ level, ids });
     });
 
-    // Step 3: 按代分组
+    // 按代分组
     const levelClusters = {};
     clusters.forEach(c => {
         if (!levelClusters[c.level]) levelClusters[c.level] = [];
         levelClusters[c.level].push(c);
     });
 
-    // Step 4: 初始等间距布局
+    // 初始等间距布局
     const nodePositions = {};
     const levels = Object.keys(levelClusters).map(Number).sort((a, b) => a - b);
-
     levels.forEach(level => {
         const list = levelClusters[level];
         const clusterWidths = list.map(c => c.ids.length * NODE_W + (c.ids.length - 1) * SPOUSE_GAP);
         const totalW = clusterWidths.reduce((s, w) => s + w, 0) + (list.length - 1) * H_GAP;
         let curX = -totalW / 2;
         const y = level * (NODE_H + V_GAP);
-
         list.forEach((cluster, ci) => {
             cluster.ids.forEach((id, i) => {
                 nodePositions[id] = { x: curX + i * (NODE_W + SPOUSE_GAP), y };
@@ -100,12 +135,10 @@ function buildTreeLayout(data) {
         });
     });
 
-    // Step 5: 子代对齐父母中点（迭代 3 次，每次 50% 靠拢 + 消除重叠）
+    // 子代对齐父母中点（迭代 3 次）
     for (let iter = 0; iter < 3; iter++) {
         levels.slice(1).forEach(level => {
             const list = levelClusters[level];
-
-            // 按父母平均 X 排序
             list.sort((a, b) => {
                 const cx = c => {
                     const pxs = [];
@@ -116,30 +149,22 @@ function buildTreeLayout(data) {
                 };
                 return cx(a) - cx(b);
             });
-
-            // 靠拢父母中点
             list.forEach(cluster => {
                 const pxs = [];
                 cluster.ids.forEach(id => parentsOf(id).forEach(pid => {
                     if (nodePositions[pid]) pxs.push(nodePositions[pid].x + NODE_W / 2);
                 }));
                 if (!pxs.length) return;
-
                 const targetCX = pxs.reduce((s, x) => s + x, 0) / pxs.length;
                 const clusterW = cluster.ids.length * NODE_W + (cluster.ids.length - 1) * SPOUSE_GAP;
-                const targetX = targetCX - clusterW / 2;
-                const shift = (targetX - nodePositions[cluster.ids[0]].x) * 0.5;
-                cluster.ids.forEach((id, i) => {
-                    nodePositions[id].x += shift;
-                });
+                const shift = (targetCX - clusterW / 2 - nodePositions[cluster.ids[0]].x) * 0.5;
+                cluster.ids.forEach(id => { nodePositions[id].x += shift; });
             });
-
-            // 消除同代重叠（向右推）
             list.sort((a, b) => nodePositions[a.ids[0]].x - nodePositions[b.ids[0]].x);
             for (let i = 1; i < list.length; i++) {
                 const prev = list[i - 1];
                 const curr = list[i];
-                const prevEnd = nodePositions[prev.ids[prev.ids.length - 1]].x + NODE_W;
+                const prevEnd  = nodePositions[prev.ids[prev.ids.length - 1]].x + NODE_W;
                 const currStart = nodePositions[curr.ids[0]].x;
                 if (currStart < prevEnd + H_GAP) {
                     const push = prevEnd + H_GAP - currStart;
@@ -148,16 +173,14 @@ function buildTreeLayout(data) {
             }
         });
     }
-
     return { nodePositions, levelMap, clusters, childrenOf, parentsOf, spousesOf };
 }
 
-// ─── 连线渲染（渔骨式 + 单亲折线）────────────────────────────────────
-function renderConnections(data, gLines, nodePositions, parentsOf, spousesOf) {
+// ─── 连线渲染（渔骨式）────────────────────────────────────────────────────
+function renderConnections(data, gLines, nodePositions, parentsOf) {
     const { relationships, marriages } = data;
     const drawnMarriage = new Set();
 
-    // ① 婚姻虚线（无子女时才单独画；有子女时由 junction bar 代替）
     const childrenOfPair = (id1, id2) =>
         data.persons.filter(p => {
             const pars = parentsOf(p.id);
@@ -165,153 +188,159 @@ function renderConnections(data, gLines, nodePositions, parentsOf, spousesOf) {
         });
 
     marriages.forEach(m => {
-        const p1 = nodePositions[m.spouse1];
-        const p2 = nodePositions[m.spouse2];
+        const p1 = nodePositions[m.spouse1], p2 = nodePositions[m.spouse2];
         if (!p1 || !p2) return;
         const key = [m.spouse1, m.spouse2].sort().join("|");
         if (drawnMarriage.has(key)) return;
         drawnMarriage.add(key);
-
         if (childrenOfPair(m.spouse1, m.spouse2).length === 0) {
-            // 无子女：水平虚线
             const x1 = Math.min(p1.x + NODE_W, p2.x + NODE_W);
             const x2 = Math.max(p1.x, p2.x);
-            const y = ((p1.y + p2.y) / 2) + NODE_H / 2;
+            const y  = ((p1.y + p2.y) / 2) + NODE_H / 2;
             drawPath(gLines, `M${x1},${y} H${x2}`, "#c084fc", "6,4");
         }
     });
 
-    // ② 构建 (parentPair -> childIds) 映射
-    const childParents = {}; // childId -> [parentIds]
+    const childParents = {};
     relationships.forEach(r => {
         if (!childParents[r.child]) childParents[r.child] = [];
         childParents[r.child].push(r.parent);
     });
 
-    const pairKey = (a, b) => [a, b].sort().join("|");
-    const pairMap = new Map(); // key -> { p1, p2, children }
-    const singleParentRels = [];
-
+    const pairKey  = (a, b) => [a, b].sort().join("|");
+    const pairMap  = new Map();
+    const singles  = [];
     Object.entries(childParents).forEach(([childId, pIds]) => {
-        const validParents = pIds.filter(pid => nodePositions[pid]);
-        if (validParents.length >= 2) {
-            const key = pairKey(validParents[0], validParents[1]);
-            if (!pairMap.has(key)) pairMap.set(key, { p1: validParents[0], p2: validParents[1], children: [] });
-            if (!pairMap.get(key).children.includes(childId))
-                pairMap.get(key).children.push(childId);
-        } else if (validParents.length === 1) {
-            singleParentRels.push({ parentId: validParents[0], childId });
+        const valid = pIds.filter(pid => nodePositions[pid]);
+        if (valid.length >= 2) {
+            const key = pairKey(valid[0], valid[1]);
+            if (!pairMap.has(key)) pairMap.set(key, { p1: valid[0], p2: valid[1], children: [] });
+            if (!pairMap.get(key).children.includes(childId)) pairMap.get(key).children.push(childId);
+        } else if (valid.length === 1) {
+            singles.push({ parentId: valid[0], childId });
         }
     });
 
-    // ③ 渔骨式连线（两个父母 + 子女们）
     pairMap.forEach(({ p1, p2, children }) => {
-        const pp1 = nodePositions[p1];
-        const pp2 = nodePositions[p2];
+        const pp1 = nodePositions[p1], pp2 = nodePositions[p2];
         if (!pp1 || !pp2) return;
-
-        const bx1 = pp1.x + NODE_W / 2;
-        const bx2 = pp2.x + NODE_W / 2;
+        const bx1 = pp1.x + NODE_W / 2, bx2 = pp2.x + NODE_W / 2;
         const by  = Math.max(pp1.y, pp2.y) + NODE_H;
         const couplingY = by + V_GAP * 0.28;
-        const jX = (bx1 + bx2) / 2;
-
-        // 竖线：两父节点底部 → coupling bar
+        const jX  = (bx1 + bx2) / 2;
         drawLine(gLines, bx1, by, bx1, couplingY);
         drawLine(gLines, bx2, by, bx2, couplingY);
-        // 横线：coupling bar（代替虚线婚姻线）
         drawLine(gLines, Math.min(bx1, bx2), couplingY, Math.max(bx1, bx2), couplingY, "#a78bfa");
-
-        const validChildren = children.filter(cid => nodePositions[cid]);
-        if (!validChildren.length) return;
-
-        const childTopY = Math.min(...validChildren.map(cid => nodePositions[cid].y));
+        const validC = children.filter(cid => nodePositions[cid]);
+        if (!validC.length) return;
+        const childTopY = Math.min(...validC.map(cid => nodePositions[cid].y));
         const childBarY = childTopY - V_GAP * 0.28;
-        const childXs = validChildren.map(cid => nodePositions[cid].x + NODE_W / 2);
-
-        // 竖线：junction → children bar
+        const childXs   = validC.map(cid => nodePositions[cid].x + NODE_W / 2);
         drawLine(gLines, jX, couplingY, jX, childBarY);
-        if (childXs.length > 1) {
-            // 横线：children spread bar
-            drawLine(gLines, Math.min(...childXs), childBarY, Math.max(...childXs), childBarY);
-        }
-        // 竖线：drop to each child
+        if (childXs.length > 1) drawLine(gLines, Math.min(...childXs), childBarY, Math.max(...childXs), childBarY);
         childXs.forEach(cx => drawLine(gLines, cx, childBarY, cx, childTopY));
     });
 
-    // ④ 单亲折线
-    singleParentRels.forEach(({ parentId, childId }) => {
-        const pp = nodePositions[parentId];
-        const cp = nodePositions[childId];
+    singles.forEach(({ parentId, childId }) => {
+        const pp = nodePositions[parentId], cp = nodePositions[childId];
         if (!pp || !cp) return;
-        const px = pp.x + NODE_W / 2;
-        const py = pp.y + NODE_H;
-        const cx = cp.x + NODE_W / 2;
-        const cy = cp.y;
+        const px = pp.x + NODE_W / 2, py = pp.y + NODE_H;
+        const cx = cp.x + NODE_W / 2, cy = cp.y;
         const midY = py + (cy - py) * 0.5;
-        // 折线：父节点底 → mid → 子节点顶
         drawPath(gLines, `M${px},${py} V${midY} H${cx} V${cy}`);
     });
 }
 
-// ─── 主渲染函数 ────────────────────────────────────────────────────────
+// ─── 全局拖拽事件（只注册一次）──────────────────────────────────────────
+function initDragHandlers() {
+    if (_dragHandlersInitialized) return;
+    _dragHandlersInitialized = true;
+
+    window.addEventListener("mousemove", e => {
+        if (!_dragState) return;
+        const ddx = e.clientX - _dragState.startX;
+        const ddy = e.clientY - _dragState.startY;
+        if (Math.abs(ddx) > 3 || Math.abs(ddy) > 3) _wasDragging = true;
+        const scale = (window.getSvgScale && window.getSvgScale()) || 1;
+        const dx = ddx / scale;
+        const dy = ddy / scale;
+        _customOffsets[_dragState.id] = { dx: _dragState.origDx + dx, dy: _dragState.origDy + dy };
+        const base = _basePositions[_dragState.id];
+        const g    = _nodeGroups[_dragState.id];
+        if (base && g) {
+            const off = _customOffsets[_dragState.id];
+            g.setAttribute("transform", `translate(${base.x + off.dx},${base.y + off.dy})`);
+        }
+    });
+
+    window.addEventListener("mouseup", () => {
+        if (!_dragState) return;
+        window._nodeDragActive = false;
+        _dragState = null;
+        if (_onDragEnd) _onDragEnd();
+        setTimeout(() => { _wasDragging = false; }, 50);
+    });
+}
+
+// ─── 主渲染 ──────────────────────────────────────────────────────────────
 function renderTree(data, svgEl_el, onNodeClick) {
+    initDragHandlers();
     svgEl_el.innerHTML = "";
     Object.keys(_nodeGroups).forEach(k => delete _nodeGroups[k]);
 
     if (!data.persons.length) {
-        const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        txt.setAttribute("x", "50%"); txt.setAttribute("y", "50%");
-        txt.setAttribute("text-anchor", "middle"); txt.setAttribute("fill", "#94a3b8");
-        txt.setAttribute("font-size", "15");
+        const txt = svgEl("text", { x: "50%", y: "50%", "text-anchor": "middle",
+            fill: "#94a3b8", "font-size": "15" });
         txt.textContent = "暂无人员，请点击「+ 新增人员」开始";
         svgEl_el.appendChild(txt);
         return;
     }
 
-    const { nodePositions, levelMap, parentsOf, spousesOf } = buildTreeLayout(data);
+    const { nodePositions: rawPos, levelMap, parentsOf, spousesOf } = buildTreeLayout(data);
 
-    // 调整 SVG 尺寸
+    // 存原始位置，应用拖拽偏移
+    _basePositions = JSON.parse(JSON.stringify(rawPos));
+    const nodePositions = JSON.parse(JSON.stringify(rawPos));
+    Object.entries(_customOffsets).forEach(([id, off]) => {
+        if (nodePositions[id]) { nodePositions[id].x += off.dx; nodePositions[id].y += off.dy; }
+    });
+
+    // SVG 尺寸
     const xs = Object.values(nodePositions).map(p => p.x);
     const ys = Object.values(nodePositions).map(p => p.y);
     const pad = 60;
-    const minX = Math.min(...xs) - pad;
-    const minY = Math.min(...ys) - pad;
-    const maxX = Math.max(...xs) + NODE_W + pad;
-    const maxY = Math.max(...ys) + NODE_H + pad;
+    const minX = Math.min(...xs) - pad, minY = Math.min(...ys) - pad;
+    const maxX = Math.max(...xs) + NODE_W + pad, maxY = Math.max(...ys) + NODE_H + pad;
     svgEl_el.setAttribute("viewBox", `${minX} ${minY} ${maxX - minX} ${maxY - minY}`);
     svgEl_el.setAttribute("width",  maxX - minX);
     svgEl_el.setAttribute("height", maxY - minY);
 
-    // defs：高亮 filter + 头像 clipPath
+    // defs: glow filter + avatar clipPaths
     const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-    defs.innerHTML = `
-      <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+    defs.innerHTML = `<filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
         <feGaussianBlur stdDeviation="4" result="blur"/>
         <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
       </filter>`;
-    // 为有头像的成员添加 clipPath（圆形裁剪）
     data.persons.forEach(p => {
         if (!p.photo) return;
-        const clipPath = document.createElementNS("http://www.w3.org/2000/svg", "clipPath");
-        clipPath.setAttribute("id", `avatar-clip-${p.id}`);
-        const circ = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        circ.setAttribute("cx", "22"); circ.setAttribute("cy", "36"); circ.setAttribute("r", "15");
-        clipPath.appendChild(circ);
-        defs.appendChild(clipPath);
+        const cp = document.createElementNS("http://www.w3.org/2000/svg", "clipPath");
+        cp.setAttribute("id", `avatar-clip-${p.id}`);
+        const circ = svgEl("circle", { cx: "22", cy: "36", r: "15" });
+        cp.appendChild(circ);
+        defs.appendChild(cp);
     });
     svgEl_el.appendChild(defs);
 
-    // 代际背景条
+    // 代际背景带
     const maxLevel = Math.max(...Object.values(levelMap));
     const gBands = document.createElementNS("http://www.w3.org/2000/svg", "g");
     for (let lv = 0; lv <= maxLevel; lv++) {
         if (lv % 2 === 0) continue;
-        const bandY = lv * (NODE_H + V_GAP) - 14;
-        const band = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        band.setAttribute("x", minX); band.setAttribute("y", bandY);
-        band.setAttribute("width", maxX - minX); band.setAttribute("height", NODE_H + 28);
-        band.setAttribute("fill", "rgba(241,245,249,0.6)"); band.setAttribute("rx", "0");
+        const band = svgEl("rect", {
+            x: minX, y: lv * (NODE_H + V_GAP) - 14,
+            width: maxX - minX, height: NODE_H + 28,
+            fill: _bandFill(), rx: "0"
+        });
         gBands.appendChild(band);
     }
     svgEl_el.appendChild(gBands);
@@ -321,110 +350,85 @@ function renderTree(data, svgEl_el, onNodeClick) {
     svgEl_el.appendChild(gLines);
     svgEl_el.appendChild(gNodes);
 
-    // 渲染连线
-    renderConnections(data, gLines, nodePositions, parentsOf, spousesOf);
+    renderConnections(data, gLines, nodePositions, parentsOf);
 
-    // 渲染节点
+    // 节点
     data.persons.forEach(p => {
         const pos = nodePositions[p.id];
         if (!pos) return;
-
-        const isMale   = p.gender === "male";
-        const isFemale = p.gender === "female";
-        const fillColor   = isMale ? "#eff6ff" : isFemale ? "#fdf2f8" : "#f8fafc";
-        const strokeColor = isMale ? "#93c5fd" : isFemale ? "#f9a8d4" : "#cbd5e1";
+        const c = getNodeColors(p.gender);
 
         const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
         g.setAttribute("transform", `translate(${pos.x},${pos.y})`);
-        g.style.cursor = "pointer";
-        g.addEventListener("click", () => onNodeClick && onNodeClick(p.id));
+        g.style.cursor = "grab";
         _nodeGroups[p.id] = g;
 
-        // 节点背景矩形
-        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        rect.setAttribute("width", NODE_W); rect.setAttribute("height", NODE_H);
-        rect.setAttribute("rx", "10"); rect.setAttribute("ry", "10");
-        rect.setAttribute("fill", fillColor);
-        rect.setAttribute("stroke", strokeColor); rect.setAttribute("stroke-width", "1.8");
-        g.appendChild(rect);
+        // 点击（仅未拖拽时触发）
+        g.addEventListener("click", () => { if (!_wasDragging) onNodeClick && onNodeClick(p.id); });
 
-        // 顶部性别色条
-        const topBar = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-        topBar.setAttribute("width", NODE_W); topBar.setAttribute("height", "5");
-        topBar.setAttribute("rx", "10"); topBar.setAttribute("ry", "10");
-        topBar.setAttribute("fill", isMale ? "#3b82f6" : isFemale ? "#ec4899" : "#94a3b8");
-        g.appendChild(topBar);
+        // 拖拽开始
+        g.addEventListener("mousedown", e => {
+            if (e.button !== 0) return;
+            e.stopPropagation();
+            _wasDragging = false;
+            const off = _customOffsets[p.id] || { dx: 0, dy: 0 };
+            _dragState = { id: p.id, startX: e.clientX, startY: e.clientY, origDx: off.dx, origDy: off.dy };
+            window._nodeDragActive = true;
+            e.preventDefault();
+        });
 
-        // 头像圆（照片或首字）
+        // 节点背景
+        g.appendChild(svgEl("rect", { width: NODE_W, height: NODE_H, rx: "10", ry: "10",
+            fill: c.fill, stroke: c.stroke, "stroke-width": "1.8" }));
+        // 顶部色条
+        g.appendChild(svgEl("rect", { width: NODE_W, height: "5", rx: "10", ry: "10", fill: c.barColor }));
+
+        // 头像
         if (p.photo) {
-            // 照片头像（圆形裁剪）
-            const photoBorder = svgEl("circle", {
-                cx: "22", cy: "36", r: "15",
-                fill: "none", stroke: strokeColor, "stroke-width": "1.5"
-            });
-            g.appendChild(photoBorder);
-            const photoImg = document.createElementNS("http://www.w3.org/2000/svg", "image");
-            photoImg.setAttribute("href", p.photo);
-            photoImg.setAttribute("x", "7"); photoImg.setAttribute("y", "21");
-            photoImg.setAttribute("width", "30"); photoImg.setAttribute("height", "30");
-            photoImg.setAttribute("clip-path", `url(#avatar-clip-${p.id})`);
-            photoImg.setAttribute("preserveAspectRatio", "xMidYMid slice");
-            g.appendChild(photoImg);
+            g.appendChild(svgEl("circle", { cx: "22", cy: "36", r: "15",
+                fill: "none", stroke: c.stroke, "stroke-width": "1.5" }));
+            const img = document.createElementNS("http://www.w3.org/2000/svg", "image");
+            img.setAttribute("href", p.photo);
+            img.setAttribute("x", "7"); img.setAttribute("y", "21");
+            img.setAttribute("width", "30"); img.setAttribute("height", "30");
+            img.setAttribute("clip-path", `url(#avatar-clip-${p.id})`);
+            img.setAttribute("preserveAspectRatio", "xMidYMid slice");
+            g.appendChild(img);
         } else {
-            // 首字文本头像
-            const avatarBg = svgEl("circle", {
-                cx: "22", cy: "36", r: "15",
-                fill: isMale ? "#dbeafe" : isFemale ? "#fce7f3" : "#f1f5f9",
-                stroke: strokeColor, "stroke-width": "1.5"
-            });
-            g.appendChild(avatarBg);
-            const avatarTxt = svgEl("text", {
-                x: "22", y: "36",
-                "text-anchor": "middle", "dominant-baseline": "middle",
-                "font-size": "14", "font-weight": "800",
-                fill: isMale ? "#1d4ed8" : isFemale ? "#db2777" : "#64748b"
-            });
-            avatarTxt.textContent = p.name.charAt(0);
-            g.appendChild(avatarTxt);
+            g.appendChild(svgEl("circle", { cx: "22", cy: "36", r: "15",
+                fill: c.avatarFill, stroke: c.stroke, "stroke-width": "1.5" }));
+            const at = svgEl("text", { x: "22", y: "36", "text-anchor": "middle",
+                "dominant-baseline": "middle", "font-size": "14", "font-weight": "800", fill: c.avatarText });
+            at.textContent = p.name.charAt(0);
+            g.appendChild(at);
         }
 
         // 姓名
-        const nameT = svgEl("text", {
-            x: "44", y: "28",
-            "text-anchor": "start", "dominant-baseline": "middle",
-            "font-size": "14", "font-weight": "700",
-            fill: "#1e293b"
-        });
+        const nameT = svgEl("text", { x: "44", y: "28", "text-anchor": "start",
+            "dominant-baseline": "middle", "font-size": "14", "font-weight": "700", fill: c.nameColor });
         nameT.textContent = p.name.length > 6 ? p.name.slice(0, 6) + "…" : p.name;
         g.appendChild(nameT);
 
         // 生卒年
-        const lifespan = (() => {
-            const b = p.birth ? p.birth.slice(0, 4) : "?";
-            if (p.death) return `${b}–${p.death.slice(0, 4)}`;
-            if (p.birth) return `b.${b}`;
-            return "";
-        })();
+        const b = p.birth ? p.birth.slice(0, 4) : "?";
+        const lifespan = p.death ? `${b}–${p.death.slice(0, 4)}` : p.birth ? `b.${b}` : "";
         if (lifespan) {
-            const lifeT = svgEl("text", {
-                x: "44", y: "50",
-                "text-anchor": "start", "dominant-baseline": "middle",
-                "font-size": "10", fill: "#64748b"
-            });
-            lifeT.textContent = lifespan;
-            g.appendChild(lifeT);
+            const lt = svgEl("text", { x: "44", y: "50", "text-anchor": "start",
+                "dominant-baseline": "middle", "font-size": "10", fill: c.lifeColor });
+            lt.textContent = lifespan;
+            g.appendChild(lt);
         }
 
         gNodes.appendChild(g);
     });
 }
 
-// ─── 高亮指定节点 ─────────────────────────────────────────────────────
+// ─── 高亮节点 ─────────────────────────────────────────────────────────────
 function highlightNode(id) {
     Object.entries(_nodeGroups).forEach(([pid, g]) => {
-        const isSelected = pid === id;
-        g.style.filter = isSelected ? "url(#glow)" : "";
+        const sel = pid === id;
+        g.style.filter = sel ? "url(#glow)" : "";
         const rect = g.querySelector("rect");
-        if (rect) rect.setAttribute("stroke-width", isSelected ? "3" : "1.8");
+        if (rect) rect.setAttribute("stroke-width", sel ? "3" : "1.8");
     });
 }

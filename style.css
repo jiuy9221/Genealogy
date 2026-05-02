@@ -528,6 +528,15 @@ mark { background: #fef08a; border-radius: 2px; padding: 0 1px; }
     border-radius: 4px;
 }
 
+/* ===== 暗色主题按钮 ===== */
+.btn-dark-mode { }
+.btn-dark-mode.dark-active {
+    background: #1e293b;
+    color: #fbbf24;
+    border-color: #475569;
+}
+.btn-dark-mode.dark-active:hover { background: #334155; }
+
 /* ===== 分享按钮 ===== */
 .btn-share {
     color: #7c3aed;
@@ -658,4 +667,88 @@ mark { background: #fef08a; border-radius: 2px; padding: 0 1px; }
     }
 
     @page { size: landscape; margin: 12mm; }
+}
+
+/* ===== 暗色主题 ===== */
+body.dark-mode {
+    --color-bg:            #0f172a;
+    --color-surface:       #1e293b;
+    --color-border:        #334155;
+    --color-text:          #e2e8f0;
+    --color-text-muted:    #94a3b8;
+    --color-primary:       #60a5fa;
+    --color-primary-hover: #3b82f6;
+    --color-danger:        #f87171;
+    --color-danger-light:  rgba(239,68,68,.12);
+    --color-male-bg:       #1a3a5c;
+    --color-male-border:   #3b82f6;
+    --color-female-bg:     #4a1942;
+    --color-female-border: #f472b6;
+    --shadow-sm:  0 1px 3px rgba(0,0,0,.35);
+    --shadow-md:  0 4px 16px rgba(0,0,0,.45);
+    --shadow-lg:  0 8px 32px rgba(0,0,0,.55);
+}
+
+/* 背景 */
+body.dark-mode #center-panel {
+    background: radial-gradient(circle, #334155 1px, transparent 1px) 0 0 / 22px 22px, #0f172a;
+}
+body.dark-mode #search-bar { background: #0f172a; }
+body.dark-mode #person-search { background: #1e293b; color: var(--color-text); border-color: #334155; }
+
+/* 按钮通用覆盖 */
+body.dark-mode button:not(.btn-primary):not(.btn-danger) {
+    background: #1e293b; color: #e2e8f0; border-color: #334155;
+}
+body.dark-mode button:hover:not(.btn-primary):not(.btn-danger) {
+    background: #334155; border-color: #475569;
+}
+body.dark-mode .btn-danger-light { color: #fca5a5; border-color: #7f1d1d; background: rgba(239,68,68,.1); }
+body.dark-mode .btn-danger-light:hover { background: rgba(239,68,68,.2); }
+body.dark-mode .btn-stats  { background: #1e3a5f; color: #60a5fa; border-color: #3b82f6; }
+body.dark-mode .btn-stats:hover { background: #1e4d8f; }
+body.dark-mode .btn-share  { background: #2d1b69; color: #a78bfa; border-color: #7c3aed; }
+body.dark-mode .btn-share:hover { background: #3b2280; }
+
+/* 快捷键提示 */
+body.dark-mode #shortcut-hint { background: #334155; color: #94a3b8; }
+
+/* 列表 */
+body.dark-mode .person-item:hover    { background: #334155; }
+body.dark-mode .person-item.selected { background: #1a3a5c; outline-color: #3b82f6; }
+body.dark-mode mark { background: #854d0e; color: #fef3c7; }
+body.dark-mode .count-badge { background: #1d4ed8; }
+
+/* 右侧编辑器 */
+body.dark-mode .editor-section { border-color: #334155; }
+body.dark-mode .rel-list li    { border-bottom-color: #334155; }
+body.dark-mode .rel-add-row select { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+
+/* 表单 */
+body.dark-mode .form-group input,
+body.dark-mode .form-group select,
+body.dark-mode .form-group textarea {
+    background: #0f172a; color: #e2e8f0; border-color: #334155;
+}
+body.dark-mode .import-option { border-color: #334155; }
+body.dark-mode .import-option:hover { background: #334155; }
+body.dark-mode .avatar-preview-wrap { background: #1e293b; border-color: #475569; }
+
+/* 모달 */
+body.dark-mode #modal-box     { background: #1e293b; }
+body.dark-mode #modal-header,
+body.dark-mode #modal-footer  { background: #0f172a; }
+
+/* Toast */
+body.dark-mode .toast { background: #0f172a; border: 1px solid #334155; }
+
+/* 统计 */
+body.dark-mode .stat-card       { background: #1e293b; border-color: #334155; }
+body.dark-mode .stats-highlight { background: #1e293b; border-color: #334155; }
+body.dark-mode .stats-hl-label  { background: #334155; }
+
+/* 图例 */
+body.dark-mode #legend {
+    background: rgba(15,23,42,.92);
+    border-color: #334155;
 }

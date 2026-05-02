@@ -47,6 +47,25 @@
   - 族谱分享：生成可分享的 URL hash（内嵌压缩 JSON）
   - 多语言支持（繁体中文 / English 切换）
 
+## 2026-05-02（第三次推进）
+- 更新文件：modules/tree.js、app.js、index.html、style.css
+- 新增功能：
+  - **暗色主题（Dark Mode）**：
+    - style.css 新增 `body.dark-mode` CSS 变量覆盖块（bg/surface/border/text/primary/danger/male/female 全套），顶栏按钮、列表、编辑器、模态框、Toast、统计卡片、图例均适配深色背景；
+    - tree.js 新增 `getNodeColors(gender)` 函数，节点填充色、描边、头像圆、顶部色条、姓名/生卒年文字颜色随主题切换；`_lineColor()` / `_bandFill()` 辅助函数控制连线与代际背景带；
+    - app.js 新增 `setupDarkMode()`，页面加载前读取 localStorage 提前应用暗色类（避免闪白），点击按钮切换主题并触发 `refreshTreeOnly()` 重绘树；
+    - 键盘快捷键 **D** 触发暗色/亮色切换；顶栏新增「🌙 暗色 / ☀ 亮色」按钮。
+  - **节点拖拽重排**：
+    - tree.js 引入 `_customOffsets`（personId→{dx,dy}）、`_basePositions`（布局算法原始坐标）、`_dragState` 模块级状态；
+    - `initDragHandlers()` 只注册一次全局 `window.mousemove/mouseup`：移动时实时更新节点 `<g>` transform，mouseup 后调用 `_onDragEnd` 回调触发完整重绘（连线随之更新）；
+    - 节点 mousedown 调用 `e.stopPropagation()` 阻止背景平移；`_wasDragging` 标志防止拖拽结束后误触 click；
+    - app.js 在页面加载时通过 `setCustomOffsets(loadDragOffsets())` 恢复偏移，`setDragEndCallback` 注册保存+重绘；`window.getSvgScale` 供 tree.js 换算屏幕像素→SVG 用户坐标；pan 的 `mousemove` 检查 `window._nodeDragActive` 避免冲突；
+    - 顶栏缩放区新增「↻ 重置节点位置」按钮（`btn-reset-drag`），清除所有拖拽偏移并重绘。
+- 下一步：
+  - 时间轴模式（横向时间线，按出生年展示各代成员）
+  - 多语言切换（繁体中文 / English）
+  - 搜索后自动在树中定位并滚动到对应节点
+
 ## 2026-05-02（第二次推进）
 - 更新文件：family.json、style.css、modules/tree.js、modules/ui.js、index.html、app.js、architecture.md
 - 新增功能：
