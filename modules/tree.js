@@ -14,6 +14,7 @@ let   _dragState     = null;
 let   _onDragEnd     = null;
 let   _wasDragging   = false;
 let   _dragHandlersInitialized = false;
+let   _currentViewMode = "tree"; // "tree" | "timeline"
 window._nodeDragActive = false;
 
 // ─── 拖拽偏移 API（供 app.js 调用）──────────────────────────────────────
@@ -282,8 +283,71 @@ function initDragHandlers() {
     });
 }
 
+// ─── 节点元素构建（tree / timeline 共用）────────────────────────────────────
+function _renderNodeGroup(p, pos, onNodeClick, enableDrag) {
+    const c = getNodeColors(p.gender);
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("transform", `translate(${pos.x},${pos.y})`);
+    g.style.cursor = enableDrag ? "grab" : "pointer";
+    _nodeGroups[p.id] = g;
+
+    g.addEventListener("click", () => { if (!_wasDragging) onNodeClick && onNodeClick(p.id); });
+
+    if (enableDrag) {
+        g.addEventListener("mousedown", e => {
+            if (e.button !== 0) return;
+            e.stopPropagation();
+            _wasDragging = false;
+            const off = _customOffsets[p.id] || { dx: 0, dy: 0 };
+            _dragState = { id: p.id, startX: e.clientX, startY: e.clientY, origDx: off.dx, origDy: off.dy };
+            window._nodeDragActive = true;
+            e.preventDefault();
+        });
+    }
+
+    g.appendChild(svgEl("rect", { width: NODE_W, height: NODE_H, rx: "10", ry: "10",
+        fill: c.fill, stroke: c.stroke, "stroke-width": "1.8" }));
+    g.appendChild(svgEl("rect", { width: NODE_W, height: "5", rx: "10", ry: "10", fill: c.barColor }));
+
+    if (p.photo) {
+        g.appendChild(svgEl("circle", { cx: "22", cy: "36", r: "15",
+            fill: "none", stroke: c.stroke, "stroke-width": "1.5" }));
+        const img = document.createElementNS("http://www.w3.org/2000/svg", "image");
+        img.setAttribute("href", p.photo);
+        img.setAttribute("x", "7"); img.setAttribute("y", "21");
+        img.setAttribute("width", "30"); img.setAttribute("height", "30");
+        img.setAttribute("clip-path", `url(#avatar-clip-${p.id})`);
+        img.setAttribute("preserveAspectRatio", "xMidYMid slice");
+        g.appendChild(img);
+    } else {
+        g.appendChild(svgEl("circle", { cx: "22", cy: "36", r: "15",
+            fill: c.avatarFill, stroke: c.stroke, "stroke-width": "1.5" }));
+        const at = svgEl("text", { x: "22", y: "36", "text-anchor": "middle",
+            "dominant-baseline": "middle", "font-size": "14", "font-weight": "800", fill: c.avatarText });
+        at.textContent = p.name.charAt(0);
+        g.appendChild(at);
+    }
+
+    const nameT = svgEl("text", { x: "44", y: "28", "text-anchor": "start",
+        "dominant-baseline": "middle", "font-size": "14", "font-weight": "700", fill: c.nameColor });
+    nameT.textContent = p.name.length > 6 ? p.name.slice(0, 6) + "…" : p.name;
+    g.appendChild(nameT);
+
+    const b = p.birth ? p.birth.slice(0, 4) : "?";
+    const lifespan = p.death ? `${b}–${p.death.slice(0, 4)}` : p.birth ? `b.${b}` : "";
+    if (lifespan) {
+        const lt = svgEl("text", { x: "44", y: "50", "text-anchor": "start",
+            "dominant-baseline": "middle", "font-size": "10", fill: c.lifeColor });
+        lt.textContent = lifespan;
+        g.appendChild(lt);
+    }
+
+    return g;
+}
+
 // ─── 主渲染 ──────────────────────────────────────────────────────────────
 function renderTree(data, svgEl_el, onNodeClick) {
+    _currentViewMode = "tree";
     initDragHandlers();
     svgEl_el.innerHTML = "";
     Object.keys(_nodeGroups).forEach(k => delete _nodeGroups[k]);
@@ -356,70 +420,7 @@ function renderTree(data, svgEl_el, onNodeClick) {
     data.persons.forEach(p => {
         const pos = nodePositions[p.id];
         if (!pos) return;
-        const c = getNodeColors(p.gender);
-
-        const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-        g.setAttribute("transform", `translate(${pos.x},${pos.y})`);
-        g.style.cursor = "grab";
-        _nodeGroups[p.id] = g;
-
-        // 点击（仅未拖拽时触发）
-        g.addEventListener("click", () => { if (!_wasDragging) onNodeClick && onNodeClick(p.id); });
-
-        // 拖拽开始
-        g.addEventListener("mousedown", e => {
-            if (e.button !== 0) return;
-            e.stopPropagation();
-            _wasDragging = false;
-            const off = _customOffsets[p.id] || { dx: 0, dy: 0 };
-            _dragState = { id: p.id, startX: e.clientX, startY: e.clientY, origDx: off.dx, origDy: off.dy };
-            window._nodeDragActive = true;
-            e.preventDefault();
-        });
-
-        // 节点背景
-        g.appendChild(svgEl("rect", { width: NODE_W, height: NODE_H, rx: "10", ry: "10",
-            fill: c.fill, stroke: c.stroke, "stroke-width": "1.8" }));
-        // 顶部色条
-        g.appendChild(svgEl("rect", { width: NODE_W, height: "5", rx: "10", ry: "10", fill: c.barColor }));
-
-        // 头像
-        if (p.photo) {
-            g.appendChild(svgEl("circle", { cx: "22", cy: "36", r: "15",
-                fill: "none", stroke: c.stroke, "stroke-width": "1.5" }));
-            const img = document.createElementNS("http://www.w3.org/2000/svg", "image");
-            img.setAttribute("href", p.photo);
-            img.setAttribute("x", "7"); img.setAttribute("y", "21");
-            img.setAttribute("width", "30"); img.setAttribute("height", "30");
-            img.setAttribute("clip-path", `url(#avatar-clip-${p.id})`);
-            img.setAttribute("preserveAspectRatio", "xMidYMid slice");
-            g.appendChild(img);
-        } else {
-            g.appendChild(svgEl("circle", { cx: "22", cy: "36", r: "15",
-                fill: c.avatarFill, stroke: c.stroke, "stroke-width": "1.5" }));
-            const at = svgEl("text", { x: "22", y: "36", "text-anchor": "middle",
-                "dominant-baseline": "middle", "font-size": "14", "font-weight": "800", fill: c.avatarText });
-            at.textContent = p.name.charAt(0);
-            g.appendChild(at);
-        }
-
-        // 姓名
-        const nameT = svgEl("text", { x: "44", y: "28", "text-anchor": "start",
-            "dominant-baseline": "middle", "font-size": "14", "font-weight": "700", fill: c.nameColor });
-        nameT.textContent = p.name.length > 6 ? p.name.slice(0, 6) + "…" : p.name;
-        g.appendChild(nameT);
-
-        // 生卒年
-        const b = p.birth ? p.birth.slice(0, 4) : "?";
-        const lifespan = p.death ? `${b}–${p.death.slice(0, 4)}` : p.birth ? `b.${b}` : "";
-        if (lifespan) {
-            const lt = svgEl("text", { x: "44", y: "50", "text-anchor": "start",
-                "dominant-baseline": "middle", "font-size": "10", fill: c.lifeColor });
-            lt.textContent = lifespan;
-            g.appendChild(lt);
-        }
-
-        gNodes.appendChild(g);
+        gNodes.appendChild(_renderNodeGroup(p, pos, onNodeClick, true));
     });
 }
 
@@ -432,3 +433,167 @@ function highlightNode(id) {
         if (rect) rect.setAttribute("stroke-width", sel ? "3" : "1.8");
     });
 }
+
+// ─── 时间轴视图渲染 ──────────────────────────────────────────────────────────
+function renderTimeline(data, svgEl_el, onNodeClick) {
+    _currentViewMode = "timeline";
+    initDragHandlers();
+    svgEl_el.innerHTML = "";
+    Object.keys(_nodeGroups).forEach(k => delete _nodeGroups[k]);
+
+    if (!data.persons.length) {
+        const txt = svgEl("text", { x: "50%", y: "50%", "text-anchor": "middle",
+            fill: "#94a3b8", "font-size": "15" });
+        txt.textContent = "暂无人员，请点击「+ 新增人员」开始";
+        svgEl_el.appendChild(txt);
+        return;
+    }
+
+    const { levelMap, parentsOf } = buildTreeLayout(data);
+    const maxLevel = Math.max(...Object.values(levelMap), 0);
+    const dark = document.body.classList.contains("dark-mode");
+
+    // 年份范围（由出生数据推算）
+    const births = data.persons.map(p => p.birth ? parseInt(p.birth) : NaN).filter(y => !isNaN(y));
+    let minYear = births.length ? Math.min(...births) - 5  : 1900;
+    let maxYear = births.length ? Math.max(...births) + 25 : 2030;
+    minYear = Math.floor(minYear / 10) * 10;
+    maxYear = Math.ceil(maxYear  / 10) * 10 + 10;
+
+    const YEAR_PX = 10; // 像素/年
+    const PAD_L = 72, PAD_R = 80, PAD_T = 68, PAD_B = 36;
+    const svgW = (maxYear - minYear) * YEAR_PX + PAD_L + PAD_R;
+    const svgH = (maxLevel + 1) * (NODE_H + V_GAP) + PAD_T + PAD_B;
+
+    svgEl_el.setAttribute("viewBox", `0 0 ${svgW} ${svgH}`);
+    svgEl_el.setAttribute("width",  svgW);
+    svgEl_el.setAttribute("height", svgH);
+
+    const yearToX = y  => PAD_L + (y - minYear) * YEAR_PX;
+    const levelToY = lv => PAD_T + lv * (NODE_H + V_GAP);
+
+    // defs（glow + 头像 clipPath）
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    defs.innerHTML = `<filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur stdDeviation="4" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>`;
+    data.persons.forEach(p => {
+        if (!p.photo) return;
+        const cp = document.createElementNS("http://www.w3.org/2000/svg", "clipPath");
+        cp.setAttribute("id", `avatar-clip-${p.id}`);
+        cp.appendChild(svgEl("circle", { cx: "22", cy: "36", r: "15" }));
+        defs.appendChild(cp);
+    });
+    svgEl_el.appendChild(defs);
+
+    const gGrid  = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    const gLines = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    const gNodes = document.createElementNS("http://www.w3.org/2000/svg", "g");
+
+    // 代际背景条（偶数代加底色）
+    for (let lv = 0; lv <= maxLevel; lv++) {
+        if (lv % 2 === 0) {
+            gGrid.appendChild(svgEl("rect", {
+                x: 0, y: levelToY(lv) - 14, width: svgW, height: NODE_H + 28,
+                fill: _bandFill()
+            }));
+        }
+        // 左侧代际标签
+        const lbl = svgEl("text", {
+            x: PAD_L - 8, y: levelToY(lv) + NODE_H / 2,
+            "text-anchor": "end", "dominant-baseline": "middle",
+            "font-size": "11", fill: dark ? "#64748b" : "#94a3b8"
+        });
+        lbl.textContent = `第${lv + 1}代`;
+        gGrid.appendChild(lbl);
+    }
+
+    // 年份刻度线 & 标签（每10年一格）
+    for (let year = minYear; year <= maxYear; year += 10) {
+        const x = yearToX(year);
+        const isCentury = year % 100 === 0;
+        gGrid.appendChild(svgEl("line", {
+            x1: x, y1: PAD_T - 26, x2: x, y2: svgH,
+            stroke: isCentury ? (dark ? "#475569" : "#cbd5e1") : (dark ? "#1e293b" : "#f1f5f9"),
+            "stroke-width": isCentury ? "1.2" : "0.7"
+        }));
+        const yearLbl = svgEl("text", {
+            x, y: PAD_T - 30, "text-anchor": "middle",
+            "font-size": "10", fill: dark ? "#475569" : "#94a3b8"
+        });
+        yearLbl.textContent = year;
+        gGrid.appendChild(yearLbl);
+    }
+
+    // 今年红色虚线
+    const currentYear = new Date().getFullYear();
+    if (currentYear >= minYear && currentYear <= maxYear) {
+        const tx = yearToX(currentYear);
+        gGrid.appendChild(svgEl("line", {
+            x1: tx, y1: PAD_T - 36, x2: tx, y2: svgH,
+            stroke: "#f87171", "stroke-width": "1.5", "stroke-dasharray": "4,3"
+        }));
+        const todayLbl = svgEl("text", {
+            x: tx + 3, y: PAD_T - 39, "font-size": "9",
+            fill: "#f87171", "font-weight": "700"
+        });
+        todayLbl.textContent = "今";
+        gGrid.appendChild(todayLbl);
+    }
+
+    svgEl_el.appendChild(gGrid);
+    svgEl_el.appendChild(gLines);
+    svgEl_el.appendChild(gNodes);
+
+    // 计算各节点的时间轴坐标（按出生年 X，代际 Y）
+    const tlPositions = {};
+    const occupiedByLevel = {}; // 碰撞回避：记录每代已占用的 x 位置
+
+    const sorted = [...data.persons].sort((a, b) => {
+        const ay = a.birth ? parseInt(a.birth) : Infinity;
+        const by_ = b.birth ? parseInt(b.birth) : Infinity;
+        return ay - by_;
+    });
+
+    sorted.forEach(p => {
+        const level = levelMap[p.id] ?? 0;
+        const y = levelToY(level);
+        let x = p.birth && !isNaN(parseInt(p.birth))
+            ? yearToX(parseInt(p.birth)) - NODE_W / 2
+            : svgW - PAD_R - NODE_W - 4; // 无出生年放最右
+
+        if (!occupiedByLevel[level]) occupiedByLevel[level] = [];
+        let finalX = x;
+        // 碰撞推移
+        for (const ex of occupiedByLevel[level]) {
+            if (Math.abs(finalX - ex) < NODE_W + 5) finalX = ex + NODE_W + 5;
+        }
+        finalX = Math.max(PAD_L, Math.min(finalX, svgW - PAD_R - NODE_W));
+        occupiedByLevel[level].push(finalX);
+        tlPositions[p.id] = { x: finalX, y };
+    });
+
+    // 存坐标供 getNodeCenter 使用
+    _basePositions = JSON.parse(JSON.stringify(tlPositions));
+
+    // 连线（复用树视图的连线算法）
+    renderConnections(data, gLines, tlPositions, parentsOf);
+
+    // 节点（时间轴模式不启用拖拽）
+    data.persons.forEach(p => {
+        const pos = tlPositions[p.id];
+        if (!pos) return;
+        gNodes.appendChild(_renderNodeGroup(p, pos, onNodeClick, false));
+    });
+}
+
+// ─── 节点中心坐标（供 app.js 视口自动居中）──────────────────────────────────
+function getNodeCenter(id) {
+    const pos = _basePositions[id];
+    if (!pos) return null;
+    // 树模式需加上拖拽偏移；时间轴模式无偏移
+    const off = _currentViewMode === "tree" ? (_customOffsets[id] || { dx: 0, dy: 0 }) : { dx: 0, dy: 0 };
+    return { x: pos.x + off.dx + NODE_W / 2, y: pos.y + off.dy + NODE_H / 2 };
+}
+window.getNodeCenter = getNodeCenter;

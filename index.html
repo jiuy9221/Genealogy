@@ -26,6 +26,11 @@
         <button class="btn-toolbar btn-share"  id="btn-share">&#128279; 分享</button>
         <button class="btn-toolbar"            id="btn-print" title="打印族谱树 (Ctrl+P)">&#128424; 打印</button>
         <span class="sep"></span>
+        <div class="view-toggle-group" id="view-toggle-group" title="切换视图 (T)">
+            <button class="view-toggle-btn active" id="btn-view-tree">&#127795; 族谱树</button>
+            <button class="view-toggle-btn"        id="btn-view-timeline">&#128197; 时间轴</button>
+        </div>
+        <span class="sep"></span>
         <button class="btn-toolbar btn-dark-mode" id="btn-dark-mode" title="切换暗色主题 (D)">🌙 暗色</button>
         <span class="sep"></span>
         <button class="btn-toolbar btn-danger-light" id="btn-reset">清空数据</button>
@@ -37,7 +42,7 @@
         <button class="btn-toolbar" id="btn-zoom-reset" title="重置 (0)">&#9673;</button>
         <button class="btn-toolbar" id="btn-zoom-out"   title="缩小 (-)">&#8722;</button>
         <span class="sep"></span>
-        <span id="shortcut-hint" title="快捷键：Ctrl+N 新增 / +- 缩放 / F 适应 / 0 重置 / Ctrl+P 打印 / ESC 关闭">⌨ 快捷键</span>
+        <span id="shortcut-hint" title="快捷键：Ctrl+N 新增 / +- 缩放 / F 适应 / 0 重置 / T 切换视图 / D 暗色 / Ctrl+P 打印 / ESC 关闭">⌨ 快捷键</span>
     </div>
 </div>
 
@@ -98,7 +103,7 @@
     <span class="legend-item line-parent">—— 亲子</span>
     <span class="legend-item line-spouse">- - 配偶</span>
     <span class="legend-sep">|</span>
-    <span class="legend-item kbd">+/- 缩放 &nbsp; F 适应 &nbsp; D 暗色 &nbsp; 0 重置 &nbsp; 拖拽节点调整位置</span>
+    <span class="legend-item kbd">+/- 缩放 &nbsp; F 适应 &nbsp; T 切换视图 &nbsp; D 暗色 &nbsp; 0 重置 &nbsp; 拖拽节点（树模式）</span>
 </div>
 
 <script src="modules/data.js"></script>

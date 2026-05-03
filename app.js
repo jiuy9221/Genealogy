@@ -9,9 +9,21 @@ let svgScale     = 1;
 let isPanning    = false;
 let panStart     = { x: 0, y: 0 };
 let _didInitialFit = false;
+let _viewMode    = "tree"; // "tree" | "timeline"
 
 // 暴露给 tree.js 拖拽换算
 window.getSvgScale = () => svgScale;
+
+// ─── 视口自动居中到节点 ────────────────────────────────────────────────────
+function centerOnNode(id) {
+    const center = window.getNodeCenter ? window.getNodeCenter(id) : null;
+    if (!center) return;
+    const container = document.getElementById("center-panel");
+    const cW = container.clientWidth  / 2;
+    const cH = container.clientHeight / 2;
+    svgPanOffset = { x: cW - center.x * svgScale, y: cH - center.y * svgScale };
+    applyTransform();
+}
 
 window.onload = async () => {
     // 加载拖拽偏移（在 renderTree 之前）
@@ -74,11 +86,19 @@ function onDataChange(newData) {
     refresh();
 }
 
+function _renderView(svg) {
+    if (_viewMode === "timeline") {
+        renderTimeline(familyData, svg, id => selectPerson(id));
+    } else {
+        renderTree(familyData, svg, id => selectPerson(id));
+    }
+}
+
 function refresh() {
     renderPersonList(familyData);
     document.getElementById("person-count").textContent = familyData.persons.length;
     const svg = document.getElementById("tree-area");
-    renderTree(familyData, svg, id => selectPerson(id));
+    _renderView(svg);
     applyTransform();
     if (!_didInitialFit) {
         requestAnimationFrame(() => { autoFitTree(); _didInitialFit = true; });
@@ -87,7 +107,7 @@ function refresh() {
 
 function refreshTreeOnly() {
     const svg = document.getElementById("tree-area");
-    renderTree(familyData, svg, id => selectPerson(id));
+    _renderView(svg);
     applyTransform();
 }
 
@@ -112,8 +132,11 @@ function autoFitTree() {
     applyTransform();
 }
 
-// ─── 高亮树节点 ────────────────────────────────────────────────────────────
-window.highlightTreeNode = function(id) { highlightNode(id); };
+// ─── 高亮并居中树节点 ──────────────────────────────────────────────────────
+window.highlightTreeNode = function(id) {
+    highlightNode(id);
+    centerOnNode(id);
+};
 
 // ─── 暗色主题 ──────────────────────────────────────────────────────────────
 function setupDarkMode() {
@@ -150,6 +173,10 @@ function setupKeyboard() {
             if (e.key === "0")                  { svgScale = 1; svgPanOffset = { x: 0, y: 0 }; applyTransform(); }
             if (e.key === "f" || e.key === "F") { autoFitTree(); }
             if (e.key === "d" || e.key === "D") { document.getElementById("btn-dark-mode")?.click(); }
+            if (e.key === "t" || e.key === "T") {
+                const next = _viewMode === "tree" ? "timeline" : "tree";
+                window._switchView && window._switchView(next);
+            }
         }
     });
 }
@@ -170,6 +197,27 @@ function setupExtraButtons() {
             refreshTreeOnly();
             showToast("节点位置已重置");
         });
+    }
+
+    // 视图切换（族谱树 / 时间轴）
+    const btnViewTree     = document.getElementById("btn-view-tree");
+    const btnViewTimeline = document.getElementById("btn-view-timeline");
+    if (btnViewTree && btnViewTimeline) {
+        const switchView = mode => {
+            if (_viewMode === mode) return;
+            _viewMode = mode;
+            btnViewTree.classList.toggle("active", mode === "tree");
+            btnViewTimeline.classList.toggle("active", mode === "timeline");
+            // 时间轴模式隐藏拖拽重置（无意义）
+            const rd = document.getElementById("btn-reset-drag");
+            if (rd) rd.style.display = mode === "tree" ? "" : "none";
+            _didInitialFit = false;
+            refreshTreeOnly();
+            requestAnimationFrame(() => { autoFitTree(); _didInitialFit = true; });
+        };
+        btnViewTree.addEventListener("click",     () => switchView("tree"));
+        btnViewTimeline.addEventListener("click",  () => switchView("timeline"));
+        window._switchView = switchView; // 供键盘快捷键使用
     }
 }
 

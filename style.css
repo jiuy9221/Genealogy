@@ -669,6 +669,36 @@ mark { background: #fef08a; border-radius: 2px; padding: 0 1px; }
     @page { size: landscape; margin: 12mm; }
 }
 
+/* ===== 视图切换按钮组 ===== */
+.view-toggle-group {
+    display: inline-flex;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1.5px solid var(--color-border);
+    background: var(--color-surface);
+    flex-shrink: 0;
+}
+.view-toggle-btn {
+    border: none;
+    background: transparent;
+    padding: 5px 13px;
+    font-size: 12.5px;
+    font-family: inherit;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+.view-toggle-btn:hover:not(.active) {
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+.view-toggle-btn.active {
+    background: var(--color-primary);
+    color: #fff;
+    font-weight: 600;
+}
+
 /* ===== 暗色主题 ===== */
 body.dark-mode {
     --color-bg:            #0f172a;
@@ -751,4 +781,21 @@ body.dark-mode .stats-hl-label  { background: #334155; }
 body.dark-mode #legend {
     background: rgba(15,23,42,.92);
     border-color: #334155;
+}
+
+/* 视图切换 */
+body.dark-mode .view-toggle-group {
+    border-color: #334155;
+    background: #0f172a;
+}
+body.dark-mode .view-toggle-btn {
+    color: #94a3b8;
+}
+body.dark-mode .view-toggle-btn:hover:not(.active) {
+    background: #1e293b;
+    color: #e2e8f0;
+}
+body.dark-mode .view-toggle-btn.active {
+    background: #3b82f6;
+    color: #fff;
 }

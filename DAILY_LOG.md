@@ -86,3 +86,27 @@
   - 多语言支持（繁体中文 / English 切换）
   - 时间轴模式（横向展示各代际生卒时间线）
   - 暗色主题（Dark Mode）切换
+
+## 2026-05-03
+- 更新文件：modules/tree.js、app.js、index.html、style.css、architecture.md、requirements.md
+- 新增功能：
+  - **时间轴视图（Timeline View）**（tree.js + app.js + index.html + style.css）：
+    - 顶栏新增「🌳 族谱树 / 📅 时间轴」分段按钮组，点击或按 `T` 键切换视图；
+    - `renderTimeline(data, svgEl_el, onNodeClick)`：以出生年为 X 轴（10px/年，范围自动由数据推算）、代际层数为 Y 轴绘制各人员节点；
+    - 代际背景条（偶数代加色带）+ 每10年一条刻度线 + 世纪线加粗；
+    - 今年位置用红色虚线 + "今" 标记；
+    - 无出生年人员排列在最右侧；同代同年节点自动碰撞推移避免重叠；
+    - 复用 `renderConnections` 绘制亲子/配偶连线；
+    - 时间轴模式不启用节点拖拽（`btn-reset-drag` 自动隐藏）。
+  - **节点选中自动居中**（app.js + tree.js）：
+    - `getNodeCenter(id)` 计算节点真实中心（树模式考虑 customOffset，时间轴模式直接用布局坐标）；
+    - `centerOnNode(id)` 根据中心坐标更新 `svgPanOffset`，使选中节点在视口居中；
+    - 左侧人员列表点击、搜索选中后，树/时间轴视图自动平移对焦。
+  - **代码重构**（tree.js）：
+    - 提取 `_renderNodeGroup(p, pos, onNodeClick, enableDrag)` 公共函数，`renderTree` 和 `renderTimeline` 均调用，消除重复节点渲染代码（减少约60行重复代码）；
+    - 新增 `_currentViewMode` 模块变量，`getNodeCenter` 按当前视图模式决定是否叠加拖拽偏移。
+- 下一步：
+  - 多语言切换（繁体中文 / English）
+  - 祖先路径显示（右侧面板显示从选中人员到根节点的路径）
+  - 触摸设备双指缩放（pinch-to-zoom）
+  - 搜索支持拼音首字母模糊匹配
