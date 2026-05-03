@@ -26,14 +26,27 @@ function centerOnNode(id) {
 }
 
 window.onload = async () => {
-    // 加载拖拽偏移（在 renderTree 之前）
-    setCustomOffsets(loadDragOffsets());
-    setDragEndCallback(() => { saveDragOffsets(); refreshTreeOnly(); });
+    // 语言优先加载（避免闪烁）
+    loadLang();
 
     // 暗色主题预先应用（避免闪白）
     if (localStorage.getItem(DARK_STORAGE_KEY) === "1") {
         document.body.classList.add("dark-mode");
     }
+
+    // 应用静态 i18n
+    applyI18n();
+
+    // 加载拖拽偏移
+    setCustomOffsets(loadDragOffsets());
+    setDragEndCallback(() => { saveDragOffsets(); refreshTreeOnly(); });
+
+    // 语言切换后重新渲染
+    window._onLangChange = () => {
+        applyI18n();
+        syncDarkBtn(document.getElementById("btn-dark-mode"));
+        refresh();
+    };
 
     // 数据加载
     const shareData = tryLoadShareHash();
@@ -41,7 +54,9 @@ window.onload = async () => {
         familyData = shareData;
         saveToLocal(familyData);
         history.replaceState(null, "", location.pathname);
-        setTimeout(() => showToast && showToast(`已加载分享数据（${familyData.persons.length} 人）`), 600);
+        setTimeout(() => showToast && showToast(
+            t("toast-share-loaded").replace("{n}", familyData.persons.length)
+        ), 600);
     } else {
         const local = loadFromLocal();
         if (local) {
@@ -63,15 +78,16 @@ window.onload = async () => {
     setupKeyboard();
     setupExtraButtons();
     setupDarkMode();
+    setupLangSwitcher();
 };
 
-// ─── 解析 URL hash 分享数据 ────────────────────────────────────────────
+// ─── 解析 URL hash 分享数据 ────────────────────────────────────────
 function tryLoadShareHash() {
     const hash = location.hash;
-    if (!hash.startsWith('#share=')) return null;
+    if (!hash.startsWith("#share=")) return null;
     try {
         const json = decodeURIComponent(
-            atob(hash.slice(7)).split('').map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
+            atob(hash.slice(7)).split("").map(c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join("")
         );
         const parsed = JSON.parse(json);
         return parsed.persons ? parsed : null;
@@ -151,10 +167,19 @@ function setupDarkMode() {
     });
 }
 function syncDarkBtn(btn) {
+    if (!btn) return;
     const dark = document.body.classList.contains("dark-mode");
-    btn.textContent = dark ? "☀ 亮色" : "🌙 暗色";
-    btn.title = dark ? "切换亮色主题 (D)" : "切换暗色主题 (D)";
+    btn.textContent = dark ? t("dark-btn-on") : t("dark-btn-off");
+    btn.title       = dark ? t("dark-title-on") : t("dark-title-off");
     btn.classList.toggle("dark-active", dark);
+}
+
+// ─── 语言切换 ──────────────────────────────────────────────────────────────
+function setupLangSwitcher() {
+    const sel = document.getElementById("lang-select");
+    if (!sel) return;
+    sel.value = getCurrentLang();
+    sel.addEventListener("change", () => setLang(sel.value));
 }
 
 // ─── 键盘快捷键 ────────────────────────────────────────────────────────────
@@ -195,7 +220,7 @@ function setupExtraButtons() {
             clearCustomOffsets();
             saveDragOffsets();
             refreshTreeOnly();
-            showToast("节点位置已重置");
+            showToast(t("toast-drag-reset"));
         });
     }
 
@@ -208,7 +233,6 @@ function setupExtraButtons() {
             _viewMode = mode;
             btnViewTree.classList.toggle("active", mode === "tree");
             btnViewTimeline.classList.toggle("active", mode === "timeline");
-            // 时间轴模式隐藏拖拽重置（无意义）
             const rd = document.getElementById("btn-reset-drag");
             if (rd) rd.style.display = mode === "tree" ? "" : "none";
             _didInitialFit = false;
@@ -217,21 +241,23 @@ function setupExtraButtons() {
         };
         btnViewTree.addEventListener("click",     () => switchView("tree"));
         btnViewTimeline.addEventListener("click",  () => switchView("timeline"));
-        window._switchView = switchView; // 供键盘快捷键使用
+        window._switchView = switchView;
     }
 }
 
-// ─── SVG 平移 & 缩放 ───────────────────────────────────────────────────────
+// ─── SVG 平移 & 缩放（含触摸双指缩放）────────────────────────────────────
 function setupTreePan() {
     const container = document.getElementById("center-panel");
     const svg = document.getElementById("tree-area");
 
+    // 鼠标滚轮缩放
     container.addEventListener("wheel", e => {
         e.preventDefault();
         svgScale = Math.min(3, Math.max(0.2, svgScale * (e.deltaY > 0 ? 0.9 : 1.1)));
         applyTransform();
     }, { passive: false });
 
+    // 鼠标平移
     svg.addEventListener("mousedown", e => {
         if (e.button !== 0 || window._nodeDragActive) return;
         isPanning = true;
@@ -248,20 +274,50 @@ function setupTreePan() {
         document.getElementById("tree-area").style.cursor = "grab";
     });
 
-    // 触摸平移
-    let touchStart = null;
+    // ─── 触摸：单指平移 + 双指捏合缩放 ──────────────────────────────────
+    let touchStart  = null;
+    let pinchDist   = null;
+    let pinchScaleStart = null;
+
     svg.addEventListener("touchstart", e => {
-        if (e.touches.length === 1)
-            touchStart = { x: e.touches[0].clientX - svgPanOffset.x, y: e.touches[0].clientY - svgPanOffset.y };
-    }, { passive: true });
-    svg.addEventListener("touchmove", e => {
-        if (touchStart && e.touches.length === 1) {
-            svgPanOffset = { x: e.touches[0].clientX - touchStart.x, y: e.touches[0].clientY - touchStart.y };
-            applyTransform();
+        if (e.touches.length === 2) {
+            // 双指：开始捏合缩放，禁用单指平移
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            pinchDist = Math.sqrt(dx * dx + dy * dy);
+            pinchScaleStart = svgScale;
+            touchStart = null;
+        } else if (e.touches.length === 1) {
+            touchStart = {
+                x: e.touches[0].clientX - svgPanOffset.x,
+                y: e.touches[0].clientY - svgPanOffset.y
+            };
         }
     }, { passive: true });
-    svg.addEventListener("touchend", () => { touchStart = null; });
 
+    svg.addEventListener("touchmove", e => {
+        if (e.touches.length === 2 && pinchDist !== null) {
+            e.preventDefault(); // 阻止浏览器原生捏合缩放
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const newDist = Math.sqrt(dx * dx + dy * dy);
+            svgScale = Math.max(0.2, Math.min(3, pinchScaleStart * (newDist / pinchDist)));
+            applyTransform();
+        } else if (touchStart && e.touches.length === 1) {
+            svgPanOffset = {
+                x: e.touches[0].clientX - touchStart.x,
+                y: e.touches[0].clientY - touchStart.y
+            };
+            applyTransform();
+        }
+    }, { passive: false }); // passive:false 允许 preventDefault 阻止原生缩放
+
+    svg.addEventListener("touchend", e => {
+        if (e.touches.length < 2) pinchDist = null;
+        if (e.touches.length === 0) touchStart = null;
+    });
+
+    // 缩放按钮
     document.getElementById("btn-zoom-in").addEventListener("click",    () => { svgScale = Math.min(3, svgScale * 1.2); applyTransform(); });
     document.getElementById("btn-zoom-out").addEventListener("click",   () => { svgScale = Math.max(0.2, svgScale / 1.2); applyTransform(); });
     document.getElementById("btn-zoom-reset").addEventListener("click", () => { svgScale = 1; svgPanOffset = { x: 0, y: 0 }; applyTransform(); });

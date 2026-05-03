@@ -14,16 +14,16 @@ function init(data, onDataChange) {
 
 function bindButtons() {
     document.getElementById("btn-add-person").addEventListener("click", showAddPersonModal);
-    document.getElementById("btn-export-json").addEventListener("click", () => { exportJSON(_data); showToast("JSON 已导出"); });
-    document.getElementById("btn-export-md").addEventListener("click",   () => { exportMarkdown(_data); showToast("Markdown 已导出"); });
+    document.getElementById("btn-export-json").addEventListener("click", () => { exportJSON(_data); showToast(t("toast-json-exported")); });
+    document.getElementById("btn-export-md").addEventListener("click",   () => { exportMarkdown(_data); showToast(t("toast-md-exported")); });
     document.getElementById("btn-import-json").addEventListener("click", () => triggerFileInput("application/json", importJSONWithDialog));
     document.getElementById("btn-import-md").addEventListener("click",   () => triggerFileInput(".md,text/markdown", importMDWithDialog));
     document.getElementById("btn-reset").addEventListener("click", () => {
-        if (confirm("确认清除所有数据？此操作不可恢复。")) {
+        if (confirm(t("confirm-clear"))) {
             clearLocal();
             _data = { persons: [], relationships: [], marriages: [] };
             _onDataChange(_data);
-            showToast("数据已清空");
+            showToast(t("toast-cleared"));
         }
     });
 
@@ -75,31 +75,33 @@ function importMDWithDialog(text) {
 function showImportDialog(parsed, format) {
     const existingCount = _data.persons.length;
     const incomingCount = parsed.persons.length;
+    const existingInfo = existingCount > 0
+        ? `${t("import-existing-prefix")} <strong>${existingCount}</strong> ${t("import-existing-suffix")}`
+        : t("import-no-existing");
 
     const bodyHTML = `
 <div class="import-dialog">
   <p class="import-summary">
-    检测到 <strong>${format}</strong> 文件，包含 <strong>${incomingCount}</strong> 位人员。
-    ${existingCount > 0 ? `当前已有 <strong>${existingCount}</strong> 位人员数据。` : "当前暂无数据。"}
+    ${t("import-title-prefix")}<strong>${format}</strong>，包含 <strong>${incomingCount}</strong> ${t("import-persons-unit")}。
+    ${existingInfo}
   </p>
   <div class="import-options">
     <label class="import-option">
       <input type="radio" name="import-mode" value="overwrite" ${existingCount === 0 ? "checked" : ""} />
-      <span><strong>覆盖</strong>：清除现有数据，完整导入</span>
+      <span><strong>${t("import-overwrite")}</strong>：${t("import-overwrite-desc")}</span>
     </label>
     <label class="import-option">
       <input type="radio" name="import-mode" value="merge" ${existingCount > 0 ? "checked" : ""} />
-      <span><strong>合并</strong>：保留现有数据，追加导入人员与关系</span>
+      <span><strong>${t("import-merge")}</strong>：${t("import-merge-desc")}</span>
     </label>
   </div>
 </div>`;
 
-    showModal(`导入 ${format}`, bodyHTML, () => {
+    showModal(`${t("import-title-prefix")}${format}`, bodyHTML, () => {
         const mode = document.querySelector('input[name="import-mode"]:checked')?.value || "overwrite";
         if (mode === "overwrite") {
             _data = parsed;
         } else {
-            // 合并：按 ID 去重追加
             const existingIds = new Set(_data.persons.map(p => p.id));
             parsed.persons.forEach(p => {
                 if (!existingIds.has(p.id)) _data.persons.push(p);
@@ -116,9 +118,10 @@ function showImportDialog(parsed, format) {
                 if (!dup) _data.marriages.push(m);
             });
         }
+        const modeLabel = mode === "overwrite" ? t("import-overwrite-toast") : t("import-merge-toast");
         _onDataChange(_data);
-        showToast(`${format} 已${mode === "overwrite" ? "覆盖" : "合并"}导入（${parsed.persons.length} 人）`);
-    }, "导入");
+        showToast(`${format} 已${modeLabel}导入（${parsed.persons.length} ${t("import-persons-unit")}）`);
+    }, t("import-overwrite"));
 }
 
 // ─── 人员列表渲染（含搜索过滤）────────────────────────────────────────
@@ -137,12 +140,11 @@ function renderPersonList(data) {
     if (!persons.length) {
         const li = document.createElement("li");
         li.className = "empty-hint";
-        li.textContent = _searchQuery ? "无匹配结果" : "暂无人员";
+        li.textContent = _searchQuery ? t("no-match") : t("no-people");
         list.appendChild(li);
         return;
     }
 
-    // 按姓名排序
     const sorted = [...persons].sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
 
     sorted.forEach(p => {
@@ -151,10 +153,10 @@ function renderPersonList(data) {
         li.dataset.id = p.id;
 
         const gTag = p.gender === "male"
-            ? '<span class="tag male">男</span>'
+            ? `<span class="tag male">${t("tag-male")}</span>`
             : p.gender === "female"
-                ? '<span class="tag female">女</span>'
-                : '<span class="tag">?</span>';
+                ? `<span class="tag female">${t("tag-female")}</span>`
+                : `<span class="tag">${t("tag-unknown")}</span>`;
 
         const birthYr = p.birth ? `<span class="person-birth">${p.birth.slice(0, 4)}</span>` : "";
         li.innerHTML = `<span class="person-name">${_searchQuery ? highlightMatch(p.name, _searchQuery) : p.name}</span>${birthYr}${gTag}`;
@@ -186,7 +188,7 @@ function selectPerson(id) {
 function renderPersonEditor(id) {
     const panel = document.getElementById("person-editor");
     const p = _data.persons.find(x => x.id === id);
-    if (!p) { panel.innerHTML = "<p class='placeholder'>请选择人员</p>"; return; }
+    if (!p) { panel.innerHTML = `<p class='placeholder'>${t("editor-placeholder")}</p>`; return; }
 
     const parents  = _data.relationships.filter(r => r.child === id).map(r => _data.persons.find(x => x.id === r.parent)).filter(Boolean);
     const children = _data.relationships.filter(r => r.parent === id).map(r => _data.persons.find(x => x.id === r.child)).filter(Boolean);
@@ -199,21 +201,25 @@ function renderPersonEditor(id) {
         .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"))
         .map(x => `<option value="${x.id}">${x.name}</option>`).join("");
 
-    const genderLabel = p.gender === "male" ? "男" : p.gender === "female" ? "女" : "未知";
+    const genderLabel = p.gender === "male" ? t("tag-male") : p.gender === "female" ? t("tag-female") : t("tag-unknown");
     const genderClass = p.gender === "male" ? "male" : p.gender === "female" ? "female" : "";
     const age = (() => {
         if (!p.birth) return "";
         const by = parseInt(p.birth);
         if (isNaN(by)) return "";
         const ey = p.death ? parseInt(p.death) : new Date().getFullYear();
-        return `（${ey - by} 岁）`;
+        return `（${ey - by}${t("age-unit")}）`;
     })();
 
-    const avatarBg = p.gender === 'male' ? '#dbeafe' : p.gender === 'female' ? '#fce7f3' : '#f1f5f9';
-    const avatarColor = p.gender === 'male' ? '#1d4ed8' : p.gender === 'female' ? '#db2777' : '#64748b';
-    const avatarHtml = p.photo
+    const avatarBg    = p.gender === "male" ? "#dbeafe" : p.gender === "female" ? "#fce7f3" : "#f1f5f9";
+    const avatarColor = p.gender === "male" ? "#1d4ed8" : p.gender === "female" ? "#db2777" : "#64748b";
+    const avatarHtml  = p.photo
         ? `<img src="${p.photo}" class="editor-avatar-img" alt="头像" />`
         : `<div class="editor-avatar-initial" style="background:${avatarBg};color:${avatarColor}">${p.name.charAt(0)}</div>`;
+
+    // 祖先路径
+    const ancestorPath = getAncestorPath(_data, id);
+    const pathHtml = buildAncestorPathHtml(ancestorPath, id);
 
     panel.innerHTML = `
 <div class="editor-section">
@@ -226,50 +232,70 @@ function renderPersonEditor(id) {
       </div>
     </div>
     <div class="editor-actions">
-      <button class="btn-sm btn-primary" onclick="showEditPersonModal('${id}')">编辑</button>
-      <button class="btn-sm btn-danger"  onclick="confirmDeletePerson('${id}')">删除</button>
+      <button class="btn-sm btn-primary" onclick="showEditPersonModal('${id}')">${t("editor-edit-btn")}</button>
+      <button class="btn-sm btn-danger"  onclick="confirmDeletePerson('${id}')">${t("editor-delete-btn")}</button>
     </div>
   </div>
   <table class="info-table">
-    <tr><td>出生</td><td>${p.birth || "不详"}</td></tr>
-    ${p.death ? `<tr><td>逝世</td><td>${p.death}</td></tr>` : ""}
-    ${p.notes ? `<tr><td>备注</td><td class="notes-cell">${p.notes}</td></tr>` : ""}
+    <tr><td>${t("editor-birth")}</td><td>${p.birth || t("birth-unknown")}</td></tr>
+    ${p.death ? `<tr><td>${t("editor-death")}</td><td>${p.death}</td></tr>` : ""}
+    ${p.notes ? `<tr><td>${t("editor-notes")}</td><td class="notes-cell">${p.notes}</td></tr>` : ""}
   </table>
 </div>
 
+${pathHtml}
+
 <div class="editor-section">
-  <h5>父母 <span class="count-badge small">${parents.length}</span></h5>
+  <h5>${t("editor-section-parents")} <span class="count-badge small">${parents.length}</span></h5>
   <ul class="rel-list">
-    ${parents.map(par => `<li><span>${par.name}</span><button class="btn-xs btn-danger" onclick="doRemoveRelationship('${par.id}','${id}')">移除</button></li>`).join("") || "<li class='empty'>暂无</li>"}
+    ${parents.map(par => `<li><span>${par.name}</span><button class="btn-xs btn-danger" onclick="doRemoveRelationship('${par.id}','${id}')">${t("editor-remove-btn")}</button></li>`).join("") || `<li class='empty'>${t("empty-rel")}</li>`}
   </ul>
   <div class="rel-add-row">
-    <select id="sel-parent"><option value="">— 选择父母 —</option>${otherOptions}</select>
-    <button class="btn-sm btn-primary" onclick="doAddParent('${id}')">添加</button>
+    <select id="sel-parent"><option value="">${t("editor-select-parent")}</option>${otherOptions}</select>
+    <button class="btn-sm btn-primary" onclick="doAddParent('${id}')">${t("editor-add-btn")}</button>
   </div>
 </div>
 
 <div class="editor-section">
-  <h5>子女 <span class="count-badge small">${children.length}</span></h5>
+  <h5>${t("editor-section-children")} <span class="count-badge small">${children.length}</span></h5>
   <ul class="rel-list">
-    ${children.map(ch => `<li><span>${ch.name}</span><button class="btn-xs btn-danger" onclick="doRemoveRelationship('${id}','${ch.id}')">移除</button></li>`).join("") || "<li class='empty'>暂无</li>"}
+    ${children.map(ch => `<li><span>${ch.name}</span><button class="btn-xs btn-danger" onclick="doRemoveRelationship('${id}','${ch.id}')">${t("editor-remove-btn")}</button></li>`).join("") || `<li class='empty'>${t("empty-rel")}</li>`}
   </ul>
   <div class="rel-add-row">
-    <select id="sel-child"><option value="">— 选择子女 —</option>${otherOptions}</select>
-    <button class="btn-sm btn-primary" onclick="doAddChild('${id}')">添加</button>
+    <select id="sel-child"><option value="">${t("editor-select-child")}</option>${otherOptions}</select>
+    <button class="btn-sm btn-primary" onclick="doAddChild('${id}')">${t("editor-add-btn")}</button>
   </div>
 </div>
 
 <div class="editor-section">
-  <h5>配偶 <span class="count-badge small">${spouses.length}</span></h5>
+  <h5>${t("editor-section-spouses")} <span class="count-badge small">${spouses.length}</span></h5>
   <ul class="rel-list">
-    ${spouses.map(sp => `<li><span>${sp.name}</span><button class="btn-xs btn-danger" onclick="doRemoveMarriage('${id}','${sp.id}')">移除</button></li>`).join("") || "<li class='empty'>暂无</li>"}
+    ${spouses.map(sp => `<li><span>${sp.name}</span><button class="btn-xs btn-danger" onclick="doRemoveMarriage('${id}','${sp.id}')">${t("editor-remove-btn")}</button></li>`).join("") || `<li class='empty'>${t("empty-rel")}</li>`}
   </ul>
   <div class="rel-add-row">
-    <select id="sel-spouse"><option value="">— 选择配偶 —</option>${otherOptions}</select>
-    <button class="btn-sm btn-primary" onclick="doAddSpouse('${id}')">添加</button>
+    <select id="sel-spouse"><option value="">${t("editor-select-spouse")}</option>${otherOptions}</select>
+    <button class="btn-sm btn-primary" onclick="doAddSpouse('${id}')">${t("editor-add-btn")}</button>
   </div>
 </div>
 `;
+}
+
+// 构建祖先路径 HTML（面包屑式）
+function buildAncestorPathHtml(path, currentId) {
+    if (!path || path.length <= 1) return ""; // 无祖先，不显示
+    return `
+<div class="editor-section ancestor-path-section">
+  <h5>${t("editor-ancestor-path")} <span class="count-badge small">${path.length}</span></h5>
+  <div class="ancestor-path">
+    ${path.map((p, i) => {
+        const isCurrent = p.id === currentId;
+        const cls = isCurrent ? "anc-item anc-current" : "anc-item";
+        const clickable = isCurrent ? "" : `onclick="selectPerson('${p.id}')"`;
+        const sep = i < path.length - 1 ? `<span class="anc-arrow">›</span>` : "";
+        return `<span class="${cls}" ${clickable}>${p.name}</span>${sep}`;
+    }).join("")}
+  </div>
+</div>`;
 }
 
 // ─── 关系操作（innerHTML onclick 调用需挂到 window）──────────────────
@@ -301,17 +327,17 @@ window.doRemoveMarriage = function(s1, s2) {
 };
 window.confirmDeletePerson = function(id) {
     const p = _data.persons.find(x => x.id === id);
-    if (!confirm(`确认删除「${p?.name}」？`)) return;
+    if (!confirm(`${t("confirm-delete-prefix")}${p?.name}${t("confirm-delete-suffix")}`)) return;
     deletePerson(_data, id);
     _selectedId = null;
     _onDataChange(_data);
-    document.getElementById("person-editor").innerHTML = "<p class='placeholder'>请选择人员</p>";
-    showToast(`已删除「${p?.name}」`);
+    document.getElementById("person-editor").innerHTML = `<p class='placeholder'>${t("editor-placeholder")}</p>`;
+    showToast(`${t("confirm-delete-prefix")}${p?.name}${t("confirm-delete-suffix").replace("？","").replace("?","")}`);
 };
 
 // ─── 新增 / 编辑人员模态框 ────────────────────────────────────────────
 function showAddPersonModal() {
-    showModal("新增人员", buildPersonForm(null), data => {
+    showModal(t("modal-add-person"), buildPersonForm(null), data => {
         addPerson(_data, data);
         _onDataChange(_data);
         showToast(`已添加「${data.name}」`);
@@ -319,7 +345,7 @@ function showAddPersonModal() {
 }
 window.showEditPersonModal = function(id) {
     const p = _data.persons.find(x => x.id === id);
-    showModal("编辑人员", buildPersonForm(p), data => {
+    showModal(t("modal-edit-person"), buildPersonForm(p), data => {
         updatePerson(_data, id, data);
         _onDataChange(_data);
         renderPersonEditor(id);
@@ -328,52 +354,52 @@ window.showEditPersonModal = function(id) {
 };
 
 function buildPersonForm(p) {
-    const escAttr = s => (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-    const escHtml = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const initChar = p?.name?.charAt(0) || '?';
+    const escAttr = s => (s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+    const escHtml = s => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const initChar = p?.name?.charAt(0) || "?";
     const avatarContent = p?.photo
         ? `<img src="${escAttr(p.photo)}" alt="头像" />`
         : `<span class="avatar-initial">${escHtml(initChar)}</span>`;
     const clearBtn = p?.photo
-        ? `<button type="button" class="btn-sm btn-danger-light" onclick="clearAvatar()">清除头像</button>`
-        : '';
+        ? `<button type="button" class="btn-sm btn-danger-light" onclick="clearAvatar()">${t("clear-photo-btn")}</button>`
+        : "";
 
     return `
 <div class="form-group">
-  <label>姓名 *</label>
-  <input id="f-name" type="text" value="${escAttr(p?.name)}" placeholder="请输入姓名" autofocus />
+  <label>${t("form-name")}</label>
+  <input id="f-name" type="text" value="${escAttr(p?.name)}" placeholder="${t("form-name-placeholder")}" autofocus />
 </div>
 <div class="form-row">
   <div class="form-group half">
-    <label>性别</label>
+    <label>${t("form-gender")}</label>
     <select id="f-gender">
-      <option value="">未知</option>
-      <option value="male"   ${p?.gender === "male"   ? "selected" : ""}>男</option>
-      <option value="female" ${p?.gender === "female" ? "selected" : ""}>女</option>
+      <option value="">${t("gender-unknown")}</option>
+      <option value="male"   ${p?.gender === "male"   ? "selected" : ""}>${t("gender-male")}</option>
+      <option value="female" ${p?.gender === "female" ? "selected" : ""}>${t("gender-female")}</option>
     </select>
   </div>
 </div>
 <div class="form-row">
   <div class="form-group half">
-    <label>出生日期</label>
+    <label>${t("form-birth")}</label>
     <input id="f-birth" type="date" value="${escAttr(p?.birth)}" />
   </div>
   <div class="form-group half">
-    <label>逝世日期</label>
+    <label>${t("form-death")}</label>
     <input id="f-death" type="date" value="${escAttr(p?.death)}" />
   </div>
 </div>
 <div class="form-group">
-  <label>头像照片</label>
+  <label>${t("form-photo")}</label>
   <div class="avatar-upload-area">
     <div class="avatar-preview-wrap" id="avatar-preview-wrap"
          onclick="document.getElementById('f-photo-file').click()" title="点击上传照片">
       ${avatarContent}
     </div>
     <div class="avatar-upload-btns">
-      <button type="button" class="btn-sm" onclick="document.getElementById('f-photo-file').click()">上传图片</button>
+      <button type="button" class="btn-sm" onclick="document.getElementById('f-photo-file').click()">${t("upload-photo-btn")}</button>
       ${clearBtn}
-      <span class="avatar-size-hint">支持 JPG/PNG<br>≤ 300 KB</span>
+      <span class="avatar-size-hint">${t("photo-hint")}</span>
     </div>
     <input type="file" id="f-photo-file" accept="image/*" style="display:none"
            onchange="handleAvatarUpload(event)" />
@@ -381,24 +407,23 @@ function buildPersonForm(p) {
   <input type="hidden" id="f-photo" value="${escAttr(p?.photo)}" />
 </div>
 <div class="form-group">
-  <label>备注</label>
-  <textarea id="f-notes" rows="3" placeholder="职位、籍贯、其他信息…">${escHtml(p?.notes)}</textarea>
+  <label>${t("form-notes")}</label>
+  <textarea id="f-notes" rows="3" placeholder="${t("form-notes-placeholder")}">${escHtml(p?.notes)}</textarea>
 </div>`;
 }
 
 // ─── 模态框系统 ─────────────────────────────────────────────────────
-function showModal(title, bodyHTML, onConfirm, confirmLabel = "确认") {
+function showModal(title, bodyHTML, onConfirm, confirmLabel) {
+    confirmLabel = confirmLabel || t("modal-confirm");
     document.getElementById("modal-title").textContent = title;
     document.getElementById("modal-body").innerHTML = bodyHTML;
     document.getElementById("modal-overlay").style.display = "flex";
     document.getElementById("modal-confirm").textContent = confirmLabel;
 
-    // 重置确认按钮事件
     const old = document.getElementById("modal-confirm");
     const btn = old.cloneNode(true);
     old.parentNode.replaceChild(btn, old);
     btn.addEventListener("click", () => {
-        // 若有表单则验证姓名
         const nameEl = document.getElementById("f-name");
         if (nameEl !== null) {
             const name = nameEl.value.trim();
@@ -418,7 +443,6 @@ function showModal(title, bodyHTML, onConfirm, confirmLabel = "确认") {
         closeModal();
     });
 
-    // 聚焦第一个输入框
     setTimeout(() => {
         const first = document.getElementById("modal-body").querySelector("input,select,textarea");
         if (first) first.focus();
@@ -444,63 +468,66 @@ function showToast(msg, duration = 2500) {
     }, duration);
 }
 
-// 供外部调用
 window.showToast = showToast;
 function getSelectedId() { return _selectedId; }
 
 // ─── 统计视图 ─────────────────────────────────────────────────────────
 function showStatsModal() {
     const s = computeStats(_data);
-    if (s.total === 0) { showToast("暂无人员数据"); return; }
+    if (s.total === 0) { showToast(t("toast-no-stats")); return; }
 
     const pct = n => s.total ? Math.round(n / s.total * 100) : 0;
+    const lifespanVal = s.avgLifespan !== null
+        ? `${s.avgLifespan}<span class='stat-pct'> ${t("age-unit")}</span>`
+        : "—";
+
     const bodyHTML = `
 <div class="stats-grid">
   <div class="stat-card">
     <div class="stat-value">${s.total}</div>
-    <div class="stat-label">总人数</div>
+    <div class="stat-label">${t("stats-total")}</div>
   </div>
   <div class="stat-card male">
     <div class="stat-value">${s.males} <span class="stat-pct">${pct(s.males)}%</span></div>
-    <div class="stat-label">男性</div>
+    <div class="stat-label">${t("stats-male")}</div>
   </div>
   <div class="stat-card female">
     <div class="stat-value">${s.females} <span class="stat-pct">${pct(s.females)}%</span></div>
-    <div class="stat-label">女性</div>
+    <div class="stat-label">${t("stats-female")}</div>
   </div>
   <div class="stat-card">
     <div class="stat-value">${s.generations}</div>
-    <div class="stat-label">代际层数</div>
+    <div class="stat-label">${t("stats-generations")}</div>
   </div>
   <div class="stat-card">
     <div class="stat-value">${s.marriages}</div>
-    <div class="stat-label">婚姻对数</div>
+    <div class="stat-label">${t("stats-marriages")}</div>
   </div>
   <div class="stat-card">
-    <div class="stat-value">${s.avgLifespan !== null ? s.avgLifespan + "<span class='stat-pct'> 岁</span>" : "—"}</div>
-    <div class="stat-label">平均寿命</div>
+    <div class="stat-value">${lifespanVal}</div>
+    <div class="stat-label">${t("stats-lifespan")}</div>
   </div>
 </div>
 ${s.maxChildrenPerson ? `
 <div class="stats-highlight">
-  <span class="stats-hl-label">子女最多</span>
-  <strong>${s.maxChildrenPerson.name}</strong>&thinsp;——&thinsp;${s.maxChildren} 位子女
+  <span class="stats-hl-label">${t("stats-most-children")}</span>
+  <strong>${s.maxChildrenPerson.name}</strong>&thinsp;——&thinsp;${s.maxChildren}${t("children-unit")}
 </div>` : ""}
 ${s.oldest ? `
 <div class="stats-highlight">
-  <span class="stats-hl-label">最年长者</span>
-  <strong>${s.oldest.name}</strong>&thinsp;——&thinsp;生于 ${s.oldest.birth.slice(0, 4)} 年
+  <span class="stats-hl-label">${t("stats-oldest")}</span>
+  <strong>${s.oldest.name}</strong>&thinsp;——&thinsp;${t("born-label")} ${s.oldest.birth.slice(0, 4)} 年
 </div>` : ""}`;
 
-    showModal("族谱统计", bodyHTML, () => {}, "关闭");
+    showModal(t("stats-title"), bodyHTML, () => {}, t("modal-cancel"));
 }
 
 // ─── 头像上传 & 清除 ────────────────────────────────────────────────────
 window.handleAvatarUpload = function(e) {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 307200) { // 300KB
-        showToast("图片过大，请选择 300KB 以内的图片", 3000);
+    if (file.size > 307200) {
+        showToast(t("toast-photo-toobig"), 3000);
         return;
     }
     const reader = new FileReader();
@@ -509,7 +536,7 @@ window.handleAvatarUpload = function(e) {
         document.getElementById("f-photo").value = dataUrl;
         const wrap = document.getElementById("avatar-preview-wrap");
         if (wrap) wrap.innerHTML = `<img src="${dataUrl}" alt="头像" />`;
-        showToast("头像已上传，保存后生效");
+        showToast(t("toast-photo-upload"));
     };
     reader.readAsDataURL(file);
 };
@@ -518,16 +545,15 @@ window.clearAvatar = function() {
     document.getElementById("f-photo").value = "";
     const wrap = document.getElementById("avatar-preview-wrap");
     const name = document.getElementById("f-name")?.value?.trim() || "?";
-    if (wrap) wrap.innerHTML = `<span class="avatar-initial">${name.charAt(0) || '?'}</span>`;
+    if (wrap) wrap.innerHTML = `<span class="avatar-initial">${name.charAt(0) || "?"}</span>`;
 };
 
 // ─── 生成分享链接 ────────────────────────────────────────────────────────
 function generateShareLink() {
     if (!_data || !_data.persons.length) {
-        showToast("暂无数据，无法生成链接");
+        showToast(t("toast-no-data"));
         return;
     }
-    // 剥离 photo 字段（可能很大），仅分享结构数据
     const shareData = {
         persons:       _data.persons.map(p => ({ ...p, photo: "" })),
         relationships: _data.relationships,
@@ -535,36 +561,35 @@ function generateShareLink() {
     };
     const json = JSON.stringify(shareData);
     try {
-        // Unicode-safe base64
         const encoded = btoa(
             encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (m, p1) =>
                 String.fromCharCode(parseInt(p1, 16))
             )
         );
         if (encoded.length > 60000) {
-            showToast("族谱数据过大，建议使用「导出 JSON」分享", 4000);
+            showToast(t("toast-share-toobig"), 4000);
             return;
         }
-        const url = location.href.split('#')[0] + '#share=' + encoded;
+        const url = location.href.split("#")[0] + "#share=" + encoded;
         if (navigator.clipboard) {
             navigator.clipboard.writeText(url)
-                .then(() => showToast("分享链接已复制到剪贴板！"))
+                .then(() => showToast(t("toast-share-copied")))
                 .catch(() => promptShareUrl(url));
         } else {
             promptShareUrl(url);
         }
     } catch {
-        showToast("生成分享链接失败");
+        showToast(t("toast-share-fail"));
     }
 }
 function promptShareUrl(url) {
     const modal = document.createElement("div");
     modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:3000";
-    modal.innerHTML = `<div style="background:#fff;border-radius:12px;padding:24px;width:480px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2)">
-      <div style="font-weight:700;font-size:15px;margin-bottom:12px">分享链接</div>
-      <textarea style="width:100%;height:80px;border:1.5px solid #e0e3e8;border-radius:7px;padding:8px;font-size:12px;resize:none" readonly>${url}</textarea>
+    modal.innerHTML = `<div style="background:var(--color-surface,#fff);border-radius:12px;padding:24px;width:480px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+      <div style="font-weight:700;font-size:15px;margin-bottom:12px">${t("share-dialog-title")}</div>
+      <textarea style="width:100%;height:80px;border:1.5px solid var(--color-border,#e0e3e8);border-radius:7px;padding:8px;font-size:12px;resize:none;background:var(--color-bg,#f4f6fa);color:var(--color-text,#1e293b)" readonly>${url}</textarea>
       <div style="display:flex;justify-content:flex-end;margin-top:12px">
-        <button style="padding:6px 18px;border:1px solid #e0e3e8;border-radius:6px;cursor:pointer;font-size:13px">关闭</button>
+        <button style="padding:6px 18px;border:1px solid var(--color-border,#e0e3e8);border-radius:6px;cursor:pointer;font-size:13px">${t("share-dialog-close")}</button>
       </div>
     </div>`;
     modal.querySelector("button").onclick = () => document.body.removeChild(modal);
@@ -579,18 +604,17 @@ function exportTreeAsPNG() {
     const svg = document.getElementById("tree-area");
     const w = parseFloat(svg.getAttribute("width"))  || 0;
     const h = parseFloat(svg.getAttribute("height")) || 0;
-    if (!w || !h) { showToast("族谱树为空，无法导出"); return; }
+    if (!w || !h) { showToast(t("toast-png-empty")); return; }
 
     const vb = (svg.getAttribute("viewBox") || "0 0 0 0").split(" ");
     const clone = svg.cloneNode(true);
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     clone.setAttribute("font-family", "Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif");
 
-    // 嵌入背景色
     const bg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     bg.setAttribute("x", vb[0]); bg.setAttribute("y", vb[1]);
     bg.setAttribute("width", w); bg.setAttribute("height", h);
-    bg.setAttribute("fill", "#f4f6fa");
+    bg.setAttribute("fill", document.body.classList.contains("dark-mode") ? "#0f172a" : "#f4f6fa");
     clone.insertBefore(bg, clone.firstChild);
 
     const serialized = new XMLSerializer().serializeToString(clone);
@@ -609,11 +633,14 @@ function exportTreeAsPNG() {
         URL.revokeObjectURL(url);
         const dateStr = new Date().toLocaleDateString("zh-CN").replace(/\//g, "-");
         const a = document.createElement("a");
-        a.download = `族谱_${dateStr}.png`;
+        a.download = `${t("app-title")}_${dateStr}.png`;
         a.href = canvas.toDataURL("image/png");
         a.click();
-        showToast("PNG 已导出（2× 高清）");
+        showToast(t("toast-png-done"));
     };
-    img.onerror = () => { URL.revokeObjectURL(url); showToast("PNG 导出失败，请使用截图工具"); };
+    img.onerror = () => { URL.revokeObjectURL(url); showToast(t("toast-png-fail")); };
     img.src = url;
 }
+
+// selectPerson 供外部调用
+window.selectPerson = selectPerson;

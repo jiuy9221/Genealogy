@@ -799,3 +799,104 @@ body.dark-mode .view-toggle-btn.active {
     background: #3b82f6;
     color: #fff;
 }
+
+/* ===== 语言选择器 ===== */
+.lang-select {
+    height: 28px;
+    padding: 0 8px;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color .15s;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 24px;
+}
+.lang-select:hover { border-color: var(--color-primary); }
+.lang-select:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+
+body.dark-mode .lang-select {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E");
+}
+
+/* ===== 祖先路径面板 ===== */
+.ancestor-path-section { background: none; }
+.ancestor-path-section h5 { margin-bottom: 8px; }
+
+.ancestor-path {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 10px;
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius);
+    min-height: 36px;
+}
+
+.anc-item {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-primary);
+    cursor: pointer;
+    transition: background .15s, color .15s;
+    white-space: nowrap;
+}
+.anc-item:hover {
+    background: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+}
+.anc-item.anc-current {
+    background: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+    cursor: default;
+    font-weight: 700;
+}
+.anc-item.anc-current:hover {
+    background: var(--color-primary-hover);
+}
+.anc-arrow {
+    font-size: 14px;
+    color: var(--color-text-muted);
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+body.dark-mode .ancestor-path {
+    background: #0f172a;
+    border-color: #334155;
+}
+body.dark-mode .anc-item {
+    background: #1e293b;
+    border-color: #334155;
+    color: #60a5fa;
+}
+body.dark-mode .anc-item:hover {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #3b82f6;
+}
+body.dark-mode .anc-item.anc-current {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+}
+body.dark-mode .anc-arrow { color: #475569; }

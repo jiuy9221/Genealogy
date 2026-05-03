@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>族谱 - 离线家族树</title>
+    <title data-i18n="app-title">族谱 - 离线家族树</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,38 +11,45 @@
 <!-- 顶栏 -->
 <div id="top-bar">
     <div id="top-bar-left">
-        <span id="app-title">族谱</span>
+        <span id="app-title" data-i18n="app-title">族谱</span>
     </div>
     <div id="top-bar-center">
-        <button class="btn-toolbar btn-primary" id="btn-add-person">&#43; 新增人员</button>
+        <button class="btn-toolbar btn-primary" id="btn-add-person" data-i18n="btn-add-person">+ 新增人员</button>
         <span class="sep"></span>
-        <button class="btn-toolbar" id="btn-import-json">导入 JSON</button>
-        <button class="btn-toolbar" id="btn-import-md">导入 MD</button>
-        <button class="btn-toolbar" id="btn-export-json">导出 JSON</button>
-        <button class="btn-toolbar" id="btn-export-md">导出 MD</button>
-        <button class="btn-toolbar" id="btn-export-png">导出 PNG</button>
+        <button class="btn-toolbar" id="btn-import-json" data-i18n="btn-import-json">导入 JSON</button>
+        <button class="btn-toolbar" id="btn-import-md"   data-i18n="btn-import-md">导入 MD</button>
+        <button class="btn-toolbar" id="btn-export-json" data-i18n="btn-export-json">导出 JSON</button>
+        <button class="btn-toolbar" id="btn-export-md"   data-i18n="btn-export-md">导出 MD</button>
+        <button class="btn-toolbar" id="btn-export-png"  data-i18n="btn-export-png">导出 PNG</button>
         <span class="sep"></span>
-        <button class="btn-toolbar btn-stats"  id="btn-stats">&#128202; 统计</button>
-        <button class="btn-toolbar btn-share"  id="btn-share">&#128279; 分享</button>
-        <button class="btn-toolbar"            id="btn-print" title="打印族谱树 (Ctrl+P)">&#128424; 打印</button>
+        <button class="btn-toolbar btn-stats" id="btn-stats"  data-i18n="btn-stats">📊 统计</button>
+        <button class="btn-toolbar btn-share" id="btn-share"  data-i18n="btn-share">🔗 分享</button>
+        <button class="btn-toolbar"           id="btn-print"  data-i18n="btn-print" title="打印族谱树 (Ctrl+P)">🖨 打印</button>
         <span class="sep"></span>
         <div class="view-toggle-group" id="view-toggle-group" title="切换视图 (T)">
-            <button class="view-toggle-btn active" id="btn-view-tree">&#127795; 族谱树</button>
-            <button class="view-toggle-btn"        id="btn-view-timeline">&#128197; 时间轴</button>
+            <button class="view-toggle-btn active" id="btn-view-tree"     data-i18n="btn-view-tree">🌳 族谱树</button>
+            <button class="view-toggle-btn"        id="btn-view-timeline" data-i18n="btn-view-timeline">📅 时间轴</button>
         </div>
         <span class="sep"></span>
         <button class="btn-toolbar btn-dark-mode" id="btn-dark-mode" title="切换暗色主题 (D)">🌙 暗色</button>
+        <!-- 语言切换 -->
+        <select id="lang-select" class="lang-select" title="Language / 语言" aria-label="Language">
+            <option value="zh-CN">🌐 简体中文</option>
+            <option value="zh-TW">🌐 繁體中文</option>
+            <option value="en">🌐 English</option>
+        </select>
         <span class="sep"></span>
-        <button class="btn-toolbar btn-danger-light" id="btn-reset">清空数据</button>
+        <button class="btn-toolbar btn-danger-light" id="btn-reset" data-i18n="btn-reset">清空数据</button>
     </div>
     <div id="top-bar-right">
-        <button class="btn-toolbar" id="btn-reset-drag" title="重置节点拖拽位置">&#8635;</button>
-        <button class="btn-toolbar" id="btn-fit-view"   title="适应视口 (F)">&#8689;</button>
-        <button class="btn-toolbar" id="btn-zoom-in"    title="放大 (+)">&#43;</button>
-        <button class="btn-toolbar" id="btn-zoom-reset" title="重置 (0)">&#9673;</button>
-        <button class="btn-toolbar" id="btn-zoom-out"   title="缩小 (-)">&#8722;</button>
+        <button class="btn-toolbar" id="btn-reset-drag" data-i18n-title="btn-reset-drag-title" title="重置节点拖拽位置">&#8635;</button>
+        <button class="btn-toolbar" id="btn-fit-view"   data-i18n-title="btn-fit-view-title"   title="适应视口 (F)">&#8689;</button>
+        <button class="btn-toolbar" id="btn-zoom-in"    data-i18n-title="btn-zoom-in-title"    title="放大 (+)">&#43;</button>
+        <button class="btn-toolbar" id="btn-zoom-reset" data-i18n-title="btn-zoom-reset-title" title="重置 (0)">&#9673;</button>
+        <button class="btn-toolbar" id="btn-zoom-out"   data-i18n-title="btn-zoom-out-title"   title="缩小 (-)">&#8722;</button>
         <span class="sep"></span>
-        <span id="shortcut-hint" title="快捷键：Ctrl+N 新增 / +- 缩放 / F 适应 / 0 重置 / T 切换视图 / D 暗色 / Ctrl+P 打印 / ESC 关闭">⌨ 快捷键</span>
+        <span id="shortcut-hint" data-i18n="shortcut-hint"
+              title="快捷键：Ctrl+N 新增 / +- 缩放 / F 适应 / 0 重置 / T 切换视图 / D 暗色 / Ctrl+P 打印 / ESC 关闭">⌨ 快捷键</span>
     </div>
 </div>
 
@@ -51,11 +58,13 @@
     <!-- 左侧人员列表 -->
     <div id="left-panel">
         <div class="panel-header">
-            <h3>人员列表</h3>
+            <h3 data-i18n="panel-people">人员列表</h3>
             <span id="person-count" class="count-badge">0</span>
         </div>
         <div id="search-bar">
-            <input type="search" id="person-search" placeholder="&#128269; 搜索姓名…" autocomplete="off" />
+            <input type="search" id="person-search"
+                   data-i18n="search-placeholder"
+                   placeholder="🔍 搜索姓名…" autocomplete="off" />
         </div>
         <ul id="person-list"></ul>
     </div>
@@ -70,7 +79,7 @@
     <!-- 右侧编辑面板 -->
     <div id="right-panel">
         <div class="panel-header">
-            <h3>人员信息</h3>
+            <h3 data-i18n="panel-info">人员信息</h3>
         </div>
         <div id="person-editor">
             <p class="placeholder">点击左侧人员<br>或族谱树节点查看详情</p>
@@ -87,8 +96,8 @@
         </div>
         <div id="modal-body"></div>
         <div id="modal-footer">
-            <button id="modal-cancel">取消</button>
-            <button id="modal-confirm" class="btn-primary">确认</button>
+            <button id="modal-cancel" data-i18n="modal-cancel">取消</button>
+            <button id="modal-confirm" class="btn-primary" data-i18n="modal-confirm">确认</button>
         </div>
     </div>
 </div>
@@ -98,14 +107,15 @@
 
 <!-- 图例 -->
 <div id="legend">
-    <span class="legend-item male">&#9632; 男性</span>
-    <span class="legend-item female">&#9632; 女性</span>
-    <span class="legend-item line-parent">—— 亲子</span>
-    <span class="legend-item line-spouse">- - 配偶</span>
+    <span class="legend-item male"   data-i18n="legend-male">&#9632; 男性</span>
+    <span class="legend-item female" data-i18n="legend-female">&#9632; 女性</span>
+    <span class="legend-item line-parent" data-i18n="legend-parent">—— 亲子</span>
+    <span class="legend-item line-spouse" data-i18n="legend-spouse">- - 配偶</span>
     <span class="legend-sep">|</span>
-    <span class="legend-item kbd">+/- 缩放 &nbsp; F 适应 &nbsp; T 切换视图 &nbsp; D 暗色 &nbsp; 0 重置 &nbsp; 拖拽节点（树模式）</span>
+    <span class="legend-item kbd" data-i18n="legend-shortcuts">+/- 缩放 &nbsp; F 适应 &nbsp; T 切换视图 &nbsp; D 暗色 &nbsp; 0 重置 &nbsp; 拖拽节点（树模式）</span>
 </div>
 
+<script src="modules/i18n.js"></script>
 <script src="modules/data.js"></script>
 <script src="modules/tree.js"></script>
 <script src="modules/ui.js"></script>

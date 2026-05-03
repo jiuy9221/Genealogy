@@ -110,3 +110,25 @@
   - 祖先路径显示（右侧面板显示从选中人员到根节点的路径）
   - 触摸设备双指缩放（pinch-to-zoom）
   - 搜索支持拼音首字母模糊匹配
+
+## 2026-05-03（第二次推进）
+- 更新文件：modules/i18n.js（新建）、index.html、modules/data.js、modules/ui.js、app.js、style.css、architecture.md、requirements.md
+- 新增功能：
+  - **多语言支持（i18n）**：
+    - 新建 `modules/i18n.js`：包含 `zh-CN`（简体）/ `zh-TW`（繁体）/ `en`（英文）三套完整翻译表（100+ 键值），`t(key)` 全局函数按当前语言取值并回退到 zh-CN；
+    - `setLang(code)` 切换语言并持久化到 `genealogy_lang`；`loadLang()` 在页面加载时预读避免闪烁；`applyI18n()` 遍历 `[data-i18n]` / `[data-i18n-title]` 元素自动更新文本与 title；
+    - 顶栏新增 `<select id="lang-select">` 样式化原生下拉选择器（带自定义 SVG 箭头，亮/暗主题双套）；
+    - `window._onLangChange` 回调：语言切换后自动触发 `applyI18n()` + `syncDarkBtn()` + `refresh()` 全量重渲；
+    - `i18n.js` 在所有模块前加载（HTML script 顺序最先），保证全局 `t()` 在任意 JS 中可用；
+    - `modules/ui.js` 全面接入 `t()` 替换硬编码字符串（按钮标签、section 标题、Toast 消息、模态标题、表单标签、导入对话框等）；`app.js` 同步接入（Toast、暗色按钮标签等）。
+  - **祖先路径显示**：
+    - `modules/data.js` 新增 `getAncestorPath(data, personId)`：DFS 向上遍历亲子关系，找从最高祖先到目标人员的最长路径，返回 person 对象数组；
+    - `modules/ui.js` `renderPersonEditor` 新增 `.ancestor-path-section` 区段：面包屑式祖先路径，每个祖先为 `.anc-item` 标签，可点击调用 `selectPerson(id)` 跳转；当前人员标注 `.anc-current`（蓝底白字）；仅两节点及以上才渲染；
+    - `style.css` 新增 `.ancestor-path`、`.anc-item`、`.anc-arrow`、`.anc-current` 全套样式（含深色主题适配）。
+  - **触摸双指捏合缩放（pinch-to-zoom）**：
+    - `app.js` `setupTreePan()` 重构触摸逻辑：`touchstart` 检测双指时记录初始距离 `pinchDist` 和 `pinchScaleStart`；`touchmove` 双指时 `e.preventDefault()`（`passive:false`）阻止浏览器原生缩放，按距离比例更新 `svgScale`；单指保持原平移逻辑；`touchend` 清理两套状态互不干扰；缩放范围限 [0.2, 3]。
+- 下一步：
+  - 搜索支持拼音首字母模糊匹配
+  - 人员详情页显示完整生卒/年龄统计
+  - 导出 PDF（jsPDF 离线库）
+  - 多族谱文件管理（本地多份族谱切换）

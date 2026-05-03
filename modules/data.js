@@ -163,6 +163,28 @@ function removeMarriage(data, spouse1Id, spouse2Id) {
     );
 }
 
+// --- 祖先路径 ---
+// 返回从最高祖先到 personId 的人员数组（含本人）
+function getAncestorPath(data, personId) {
+    const parentsOf = id => data.relationships.filter(r => r.child === id).map(r => r.parent);
+
+    // DFS 向上找最长路径：返回 [rootId, ..., personId]
+    function upPath(id, visited) {
+        const parents = parentsOf(id).filter(p => !visited.has(p));
+        if (!parents.length) return [id];
+        let best = [id];
+        for (const pid of parents) {
+            const nv = new Set(visited); nv.add(pid);
+            const sub = upPath(pid, nv);
+            if (sub.length + 1 > best.length) best = [...sub, id];
+        }
+        return best;
+    }
+
+    const pathIds = upPath(personId, new Set([personId]));
+    return pathIds.map(id => data.persons.find(p => p.id === id)).filter(Boolean);
+}
+
 // --- 统计分析 ---
 function computeStats(data) {
     const total = data.persons.length;
