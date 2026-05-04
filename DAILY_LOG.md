@@ -132,3 +132,24 @@
   - 人员详情页显示完整生卒/年龄统计
   - 导出 PDF（jsPDF 离线库）
   - 多族谱文件管理（本地多份族谱切换）
+
+## 2026-05-04
+- 更新文件：modules/data.js、app.js、modules/i18n.js、index.html、modules/ui.js、style.css、modules/tree.js
+- 新增功能：
+  - **多族谱文件管理**（data.js + app.js + index.html + i18n.js + style.css）：
+    - `modules/data.js` 新增 `createGenealogyFile(name, data)`、`loadGenealogyById(id)`、`saveGenealogyById(id, data)`、`deleteGenealogyById(id)`、`renameGenealogyFile(id, name)`、`migrateFromLegacy()` 等七个多文件管理函数；数据以 `genealogy_data_<id>` 为 key 存入 localStorage，文件列表用 `genealogy_file_list`，当前活动文件用 `genealogy_active_id`；
+    - 首次打开时自动迁移旧版 `genealogy_familyData` 单键数据至新系统（无缝向下兼容）；
+    - `app.js` 新增 `currentFileId` 状态、`updateFileNameDisplay()`、`switchToFile(id)` 函数；启动流程全面接入多文件逻辑（迁移 → 读取活动文件 → 渲染）；`onDataChange` 调用 `saveGenealogyById` 替代旧 `saveToLocal`；
+    - 顶栏左侧新增当前族谱文件名显示区（`#current-file-name`，灰色细字，超出截断）；
+    - 工具栏新增绿色「📁 文件」按钮（`#btn-file-manager`），点击弹出文件管理对话框；
+    - 文件管理对话框（自定义 overlay，带淡入滑动动画）：列出所有已保存族谱文件，当前激活项标蓝色「当前」徽章；支持 **切换**（即时重渲）、**重命名**（prompt 输入）、**删除**（至少保留一个，确认对话框）、**新建**（prompt 命名 + 立即切换）；ESC 键关闭；事件委托刷新列表无需重建整个 DOM；
+    - 三套语言（zh-CN / zh-TW / en）均补充完整文件管理翻译键（22 个新键）。
+  - **族谱树代际标签**（tree.js）：
+    - `renderTree` 的代际背景带循环中同时渲染左侧代际文字标签（「第1代」…「第N代」），与时间轴视图保持一致；标签位置自动跟随 viewBox minX，深/浅主题各用不同灰度色；`pointer-events:none` 避免干扰拖拽。
+  - **出生/逝世年份弹性输入**（ui.js + i18n.js）：
+    - 新增/编辑人员表单将出生日期和逝世日期字段从 `type="date"` 改为 `type="text"`，支持用户输入纯年份（如 `1920`）或完整日期（如 `1920-01-15`）；三语 placeholder 提示示例格式；存储格式保持原样（`p.birth.slice(0,4)` 显示逻辑不变）。
+- 下一步：
+  - 导出 PDF（通过浏览器打印 @media print 美化或 SVG 序列化下载）
+  - 搜索支持拼音首字母模糊匹配
+  - 人员关系图（从某人出发显示其直系亲属子树）
+  - 多设备同步提示（提示用户定期导出 JSON 作为备份）

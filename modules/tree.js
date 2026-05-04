@@ -395,17 +395,30 @@ function renderTree(data, svgEl_el, onNodeClick) {
     });
     svgEl_el.appendChild(defs);
 
-    // 代际背景带
+    // 代际背景带 + 代际标签
     const maxLevel = Math.max(...Object.values(levelMap));
+    const dark = document.body.classList.contains('dark-mode');
     const gBands = document.createElementNS("http://www.w3.org/2000/svg", "g");
     for (let lv = 0; lv <= maxLevel; lv++) {
-        if (lv % 2 === 0) continue;
-        const band = svgEl("rect", {
-            x: minX, y: lv * (NODE_H + V_GAP) - 14,
-            width: maxX - minX, height: NODE_H + 28,
-            fill: _bandFill(), rx: "0"
+        if (lv % 2 !== 0) {
+            const band = svgEl("rect", {
+                x: minX, y: lv * (NODE_H + V_GAP) - 14,
+                width: maxX - minX, height: NODE_H + 28,
+                fill: _bandFill(), rx: "0"
+            });
+            gBands.appendChild(band);
+        }
+        // 左侧代际标签
+        const rowY = lv * (NODE_H + V_GAP) + NODE_H / 2;
+        const lbl = svgEl("text", {
+            x: minX + 6, y: rowY,
+            "text-anchor": "start", "dominant-baseline": "middle",
+            "font-size": "11", "font-weight": "600",
+            fill: dark ? "#475569" : "#94a3b8",
+            "pointer-events": "none"
         });
-        gBands.appendChild(band);
+        lbl.textContent = `第${lv + 1}代`;
+        gBands.appendChild(lbl);
     }
     svgEl_el.appendChild(gBands);
 

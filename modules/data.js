@@ -185,6 +185,89 @@ function getAncestorPath(data, personId) {
     return pathIds.map(id => data.persons.find(p => p.id === id)).filter(Boolean);
 }
 
+// ─── 多族谱文件管理 ────────────────────────────────────────────────────────
+const FILE_LIST_KEY = "genealogy_file_list";
+const ACTIVE_ID_KEY = "genealogy_active_id";
+const FILE_DATA_PFX = "genealogy_data_";
+
+function generateFileId() {
+    return "f" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+}
+
+function loadFileList() {
+    try {
+        const raw = localStorage.getItem(FILE_LIST_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+}
+
+function saveFileList(list) {
+    localStorage.setItem(FILE_LIST_KEY, JSON.stringify(list));
+}
+
+function getActiveFileId() {
+    return localStorage.getItem(ACTIVE_ID_KEY) || null;
+}
+
+function setActiveFileId(id) {
+    if (id) localStorage.setItem(ACTIVE_ID_KEY, id);
+}
+
+function loadGenealogyById(id) {
+    try {
+        const raw = localStorage.getItem(FILE_DATA_PFX + id);
+        return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+}
+
+function saveGenealogyById(id, data) {
+    if (!id) return;
+    localStorage.setItem(FILE_DATA_PFX + id, JSON.stringify(data));
+    const list = loadFileList();
+    const entry = list.find(f => f.id === id);
+    if (entry) {
+        entry.modified = new Date().toISOString().slice(0, 10);
+        saveFileList(list);
+    }
+}
+
+function deleteGenealogyById(id) {
+    localStorage.removeItem(FILE_DATA_PFX + id);
+    const list = loadFileList().filter(f => f.id !== id);
+    saveFileList(list);
+}
+
+function createGenealogyFile(name, initialData) {
+    const id = generateFileId();
+    const now = new Date().toISOString().slice(0, 10);
+    const list = loadFileList();
+    list.push({ id, name: name || "新族谱", created: now, modified: now });
+    saveFileList(list);
+    const data = initialData || defaultData();
+    localStorage.setItem(FILE_DATA_PFX + id, JSON.stringify(data));
+    return id;
+}
+
+function renameGenealogyFile(id, newName) {
+    const list = loadFileList();
+    const entry = list.find(f => f.id === id);
+    if (entry) { entry.name = newName; saveFileList(list); }
+}
+
+// 将旧版单键存储迁移到多文件系统，返回是否存在已有人员数据
+function migrateFromLegacy() {
+    if (loadFileList().length > 0) return false;
+    let legacyData, hadData = false;
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        legacyData = raw ? JSON.parse(raw) : defaultData();
+        hadData = legacyData.persons?.length > 0;
+    } catch { legacyData = defaultData(); }
+    const id = createGenealogyFile("默认族谱", legacyData);
+    setActiveFileId(id);
+    return hadData;
+}
+
 // --- 统计分析 ---
 function computeStats(data) {
     const total = data.persons.length;

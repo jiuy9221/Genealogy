@@ -382,11 +382,11 @@ function buildPersonForm(p) {
 <div class="form-row">
   <div class="form-group half">
     <label>${t("form-birth")}</label>
-    <input id="f-birth" type="date" value="${escAttr(p?.birth)}" />
+    <input id="f-birth" type="text" value="${escAttr(p?.birth)}" placeholder="${t("form-birth-placeholder")}" />
   </div>
   <div class="form-group half">
     <label>${t("form-death")}</label>
-    <input id="f-death" type="date" value="${escAttr(p?.death)}" />
+    <input id="f-death" type="text" value="${escAttr(p?.death)}" placeholder="${t("form-death-placeholder")}" />
   </div>
 </div>
 <div class="form-group">

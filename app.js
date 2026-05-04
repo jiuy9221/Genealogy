@@ -4,6 +4,7 @@ const DRAG_STORAGE_KEY = "genealogy_customOffsets";
 const DARK_STORAGE_KEY = "genealogy_darkMode";
 
 let familyData   = { persons: [], relationships: [], marriages: [] };
+let currentFileId = null;
 let svgPanOffset = { x: 0, y: 0 };
 let svgScale     = 1;
 let isPanning    = false;
@@ -26,52 +27,57 @@ function centerOnNode(id) {
 }
 
 window.onload = async () => {
-    // 语言优先加载（避免闪烁）
     loadLang();
-
-    // 暗色主题预先应用（避免闪白）
     if (localStorage.getItem(DARK_STORAGE_KEY) === "1") {
         document.body.classList.add("dark-mode");
     }
-
-    // 应用静态 i18n
     applyI18n();
-
-    // 加载拖拽偏移
     setCustomOffsets(loadDragOffsets());
     setDragEndCallback(() => { saveDragOffsets(); refreshTreeOnly(); });
-
-    // 语言切换后重新渲染
     window._onLangChange = () => {
         applyI18n();
         syncDarkBtn(document.getElementById("btn-dark-mode"));
         refresh();
     };
 
-    // 数据加载
+    // 迁移旧版存储并加载当前族谱
+    const hadLegacyData = migrateFromLegacy();
+
     const shareData = tryLoadShareHash();
     if (shareData) {
+        currentFileId = getActiveFileId();
         familyData = shareData;
-        saveToLocal(familyData);
+        if (currentFileId) saveGenealogyById(currentFileId, familyData);
         history.replaceState(null, "", location.pathname);
         setTimeout(() => showToast && showToast(
             t("toast-share-loaded").replace("{n}", familyData.persons.length)
         ), 600);
     } else {
-        const local = loadFromLocal();
-        if (local) {
-            familyData = local;
+        currentFileId = getActiveFileId();
+        if (currentFileId) {
+            familyData = loadGenealogyById(currentFileId) || defaultData();
+            // 新安装且无历史数据时尝试加载 family.json
+            if (!familyData.persons.length && !hadLegacyData) {
+                try {
+                    const res = await fetch("family.json");
+                    const json = await res.json();
+                    if (json.persons?.length) {
+                        familyData = json;
+                        saveGenealogyById(currentFileId, familyData);
+                    }
+                } catch {}
+            }
         } else {
             try {
                 const res = await fetch("family.json");
                 familyData = await res.json();
-                saveToLocal(familyData);
-            } catch {
-                familyData = { persons: [], relationships: [], marriages: [] };
-            }
+            } catch { familyData = defaultData(); }
+            currentFileId = createGenealogyFile("默认族谱", familyData);
+            setActiveFileId(currentFileId);
         }
     }
 
+    updateFileNameDisplay();
     initUI();
     refresh();
     setupTreePan();
@@ -79,6 +85,7 @@ window.onload = async () => {
     setupExtraButtons();
     setupDarkMode();
     setupLangSwitcher();
+    setupFileManager();
 };
 
 // ─── 解析 URL hash 分享数据 ────────────────────────────────────────
@@ -98,7 +105,8 @@ function initUI() { init(familyData, onDataChange); }
 
 function onDataChange(newData) {
     familyData = newData;
-    saveToLocal(familyData);
+    if (currentFileId) saveGenealogyById(currentFileId, familyData);
+    else saveToLocal(familyData);
     refresh();
 }
 
@@ -154,6 +162,126 @@ window.highlightTreeNode = function(id) {
     centerOnNode(id);
 };
 
+// ─── 多族谱文件管理 ────────────────────────────────────────────────────────
+function updateFileNameDisplay() {
+    const el = document.getElementById("current-file-name");
+    if (!el) return;
+    const list = loadFileList();
+    const entry = list.find(f => f.id === currentFileId);
+    el.textContent = entry ? entry.name : "";
+}
+
+function switchToFile(id) {
+    if (id === currentFileId) return;
+    if (currentFileId) saveGenealogyById(currentFileId, familyData);
+    currentFileId = id;
+    setActiveFileId(id);
+    familyData = loadGenealogyById(id) || defaultData();
+    updateFileNameDisplay();
+    _didInitialFit = false;
+    refresh();
+    requestAnimationFrame(() => { autoFitTree(); _didInitialFit = true; });
+}
+
+function setupFileManager() {
+    const btn = document.getElementById("btn-file-manager");
+    if (btn) btn.addEventListener("click", showFileManagerDialog);
+}
+
+function showFileManagerDialog() {
+    const old = document.getElementById("fm-overlay");
+    if (old) old.remove();
+
+    const rebuildList = () => {
+        const list = loadFileList();
+        if (!list.length) return `<p class="fm-empty">${t("file-manager-empty")}</p>`;
+        return list.map(f => {
+            const isActive = f.id === currentFileId;
+            const dateStr = f.modified || f.created || "";
+            return `
+<div class="fm-item${isActive ? " fm-active" : ""}">
+  <div class="fm-item-info">
+    <span class="fm-name">${escHtmlFm(f.name)}${isActive ? `<span class="fm-badge">${t("file-manager-active")}</span>` : ""}</span>
+    <span class="fm-date">${t("file-modified-on")} ${dateStr}</span>
+  </div>
+  <div class="fm-btns">
+    ${!isActive ? `<button class="btn-sm btn-primary fm-action" data-action="switch" data-id="${f.id}">${t("file-manager-switch")}</button>` : ""}
+    <button class="btn-sm fm-action" data-action="rename" data-id="${f.id}">${t("file-manager-rename")}</button>
+    ${list.length > 1 ? `<button class="btn-sm btn-danger fm-action" data-action="delete" data-id="${f.id}">${t("file-manager-delete")}</button>` : ""}
+  </div>
+</div>`;
+        }).join("");
+    };
+
+    const overlay = document.createElement("div");
+    overlay.id = "fm-overlay";
+    overlay.className = "fm-overlay";
+    overlay.innerHTML = `
+<div class="fm-box">
+  <div class="fm-header">
+    <span>${t("file-manager-title")}</span>
+    <button class="fm-close-x">&times;</button>
+  </div>
+  <div class="fm-actions-top">
+    <button class="btn-sm btn-primary" id="fm-new-btn">${t("file-manager-new")}</button>
+  </div>
+  <div class="fm-list" id="fm-list">${rebuildList()}</div>
+  <div class="fm-footer">
+    <button class="btn-sm fm-close-x">${t("file-manager-close")}</button>
+  </div>
+</div>`;
+
+    const close = () => overlay.remove();
+    overlay.querySelectorAll(".fm-close-x").forEach(b => b.addEventListener("click", close));
+    overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+
+    overlay.querySelector("#fm-new-btn").addEventListener("click", () => {
+        const name = prompt(t("file-manager-name-prompt"), t("file-manager-default-name"));
+        if (!name?.trim()) return;
+        const id = createGenealogyFile(name.trim());
+        showToast(t("toast-file-created").replace("{name}", name.trim()));
+        switchToFile(id);
+        close();
+    });
+
+    overlay.querySelector("#fm-list").addEventListener("click", e => {
+        const btn = e.target.closest(".fm-action");
+        if (!btn) return;
+        const { action, id } = btn.dataset;
+        const entry = loadFileList().find(f => f.id === id);
+
+        if (action === "switch") {
+            switchToFile(id);
+            showToast(t("toast-file-switched").replace("{name}", entry?.name || ""));
+            close();
+        } else if (action === "rename") {
+            const newName = prompt(t("file-manager-rename-prompt"), entry?.name || "");
+            if (!newName?.trim()) return;
+            renameGenealogyFile(id, newName.trim());
+            if (id === currentFileId) updateFileNameDisplay();
+            showToast(t("toast-file-renamed").replace("{name}", newName.trim()));
+            overlay.querySelector("#fm-list").innerHTML = rebuildList();
+        } else if (action === "delete") {
+            const allFiles = loadFileList();
+            if (allFiles.length <= 1) { showToast(t("toast-file-last")); return; }
+            if (!confirm(t("confirm-delete-file").replace("{name}", entry?.name || id))) return;
+            if (id === currentFileId) {
+                const other = allFiles.find(f => f.id !== id);
+                if (other) switchToFile(other.id);
+            }
+            deleteGenealogyById(id);
+            showToast(t("toast-file-deleted").replace("{name}", entry?.name || ""));
+            overlay.querySelector("#fm-list").innerHTML = rebuildList();
+        }
+    });
+
+    document.body.appendChild(overlay);
+}
+
+function escHtmlFm(s) {
+    return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 // ─── 暗色主题 ──────────────────────────────────────────────────────────────
 function setupDarkMode() {
     const btn = document.getElementById("btn-dark-mode");
@@ -188,6 +316,8 @@ function setupKeyboard() {
         if (e.key === "Escape") {
             const ov = document.getElementById("modal-overlay");
             if (ov.style.display !== "none") { ov.style.display = "none"; return; }
+            const fm = document.getElementById("fm-overlay");
+            if (fm) { fm.remove(); return; }
         }
         if ((e.ctrlKey || e.metaKey) && e.key === "n") { e.preventDefault(); document.getElementById("btn-add-person").click(); }
         if ((e.ctrlKey || e.metaKey) && e.key === "e") { e.preventDefault(); document.getElementById("btn-export-json").click(); }
@@ -250,14 +380,12 @@ function setupTreePan() {
     const container = document.getElementById("center-panel");
     const svg = document.getElementById("tree-area");
 
-    // 鼠标滚轮缩放
     container.addEventListener("wheel", e => {
         e.preventDefault();
         svgScale = Math.min(3, Math.max(0.2, svgScale * (e.deltaY > 0 ? 0.9 : 1.1)));
         applyTransform();
     }, { passive: false });
 
-    // 鼠标平移
     svg.addEventListener("mousedown", e => {
         if (e.button !== 0 || window._nodeDragActive) return;
         isPanning = true;
@@ -274,50 +402,37 @@ function setupTreePan() {
         document.getElementById("tree-area").style.cursor = "grab";
     });
 
-    // ─── 触摸：单指平移 + 双指捏合缩放 ──────────────────────────────────
-    let touchStart  = null;
-    let pinchDist   = null;
-    let pinchScaleStart = null;
-
+    let touchStart = null, pinchDist = null, pinchScaleStart = null;
     svg.addEventListener("touchstart", e => {
         if (e.touches.length === 2) {
-            // 双指：开始捏合缩放，禁用单指平移
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             pinchDist = Math.sqrt(dx * dx + dy * dy);
             pinchScaleStart = svgScale;
             touchStart = null;
         } else if (e.touches.length === 1) {
-            touchStart = {
-                x: e.touches[0].clientX - svgPanOffset.x,
-                y: e.touches[0].clientY - svgPanOffset.y
-            };
+            touchStart = { x: e.touches[0].clientX - svgPanOffset.x, y: e.touches[0].clientY - svgPanOffset.y };
         }
     }, { passive: true });
 
     svg.addEventListener("touchmove", e => {
         if (e.touches.length === 2 && pinchDist !== null) {
-            e.preventDefault(); // 阻止浏览器原生捏合缩放
+            e.preventDefault();
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
-            const newDist = Math.sqrt(dx * dx + dy * dy);
-            svgScale = Math.max(0.2, Math.min(3, pinchScaleStart * (newDist / pinchDist)));
+            svgScale = Math.max(0.2, Math.min(3, pinchScaleStart * (Math.sqrt(dx*dx+dy*dy) / pinchDist)));
             applyTransform();
         } else if (touchStart && e.touches.length === 1) {
-            svgPanOffset = {
-                x: e.touches[0].clientX - touchStart.x,
-                y: e.touches[0].clientY - touchStart.y
-            };
+            svgPanOffset = { x: e.touches[0].clientX - touchStart.x, y: e.touches[0].clientY - touchStart.y };
             applyTransform();
         }
-    }, { passive: false }); // passive:false 允许 preventDefault 阻止原生缩放
+    }, { passive: false });
 
     svg.addEventListener("touchend", e => {
         if (e.touches.length < 2) pinchDist = null;
         if (e.touches.length === 0) touchStart = null;
     });
 
-    // 缩放按钮
     document.getElementById("btn-zoom-in").addEventListener("click",    () => { svgScale = Math.min(3, svgScale * 1.2); applyTransform(); });
     document.getElementById("btn-zoom-out").addEventListener("click",   () => { svgScale = Math.max(0.2, svgScale / 1.2); applyTransform(); });
     document.getElementById("btn-zoom-reset").addEventListener("click", () => { svgScale = 1; svgPanOffset = { x: 0, y: 0 }; applyTransform(); });

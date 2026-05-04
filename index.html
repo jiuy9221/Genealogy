@@ -12,6 +12,8 @@
 <div id="top-bar">
     <div id="top-bar-left">
         <span id="app-title" data-i18n="app-title">族谱</span>
+        <span class="file-name-sep">›</span>
+        <span id="current-file-name" class="current-file-name" title="当前族谱文件"></span>
     </div>
     <div id="top-bar-center">
         <button class="btn-toolbar btn-primary" id="btn-add-person" data-i18n="btn-add-person">+ 新增人员</button>
@@ -39,6 +41,7 @@
             <option value="en">🌐 English</option>
         </select>
         <span class="sep"></span>
+        <button class="btn-toolbar btn-file"         id="btn-file-manager" data-i18n="btn-file-manager">📁 文件</button>
         <button class="btn-toolbar btn-danger-light" id="btn-reset" data-i18n="btn-reset">清空数据</button>
     </div>
     <div id="top-bar-right">
