@@ -632,15 +632,65 @@ mark { background: #fef08a; border-radius: 2px; padding: 0 1px; }
     #legend { left: 50%; }
 }
 
+/* ===== 打印专用标题栏 ===== */
+#print-title-bar {
+    display: none;
+}
+
+/* ===== 撤销/重做按钮 ===== */
+.btn-undo-redo {
+    font-size: 16px !important;
+    padding: 0 8px !important;
+    min-width: 30px !important;
+    line-height: 28px !important;
+    color: var(--color-text-muted) !important;
+    transition: color .15s, background .15s !important;
+}
+.btn-undo-redo:hover:not(:disabled) {
+    color: var(--color-primary) !important;
+    background: rgba(37,99,235,.08) !important;
+}
+.btn-undo-redo:disabled {
+    opacity: 0.35 !important;
+    cursor: not-allowed !important;
+}
+body.dark-mode .btn-undo-redo:hover:not(:disabled) {
+    background: rgba(96,165,250,.12) !important;
+    color: #60a5fa !important;
+}
+
 /* ===== 打印优化 ===== */
 @media print {
     #top-bar, #left-panel, #right-panel,
-    #legend, #toast-container { display: none !important; }
+    #legend, #toast-container, #modal-overlay,
+    #fm-overlay { display: none !important; }
+
+    #print-title-bar {
+        display: block !important;
+        padding: 0 0 10mm 0;
+        border-bottom: 2px solid #1e293b;
+        margin-bottom: 6mm;
+        page-break-after: avoid;
+    }
+    #print-title-text {
+        font-size: 22pt;
+        font-weight: 800;
+        color: #1e293b;
+        letter-spacing: 3px;
+    }
+    #print-subtitle {
+        font-size: 10pt;
+        color: #64748b;
+        margin-top: 2mm;
+        letter-spacing: 1px;
+    }
 
     body {
         background: white !important;
         overflow: visible !important;
         height: auto !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
     #layout {
         display: block !important;
@@ -648,25 +698,28 @@ mark { background: #fef08a; border-radius: 2px; padding: 0 1px; }
         height: auto !important;
     }
     #center-panel {
-        width: 100vw !important;
+        width: 100% !important;
         height: auto !important;
         overflow: visible !important;
         background: white !important;
+        padding: 0 !important;
     }
     #tree-container {
         width: 100% !important;
         height: auto !important;
         overflow: visible !important;
         display: block !important;
+        background: white !important;
     }
     #tree-area {
         transform: none !important;
         display: block !important;
-        max-width: 100% !important;
+        width: 100% !important;
         height: auto !important;
+        max-width: 100% !important;
     }
 
-    @page { size: landscape; margin: 12mm; }
+    @page { size: landscape; margin: 12mm 14mm; }
 }
 
 /* ===== 视图切换按钮组 ===== */

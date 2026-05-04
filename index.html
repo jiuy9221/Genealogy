@@ -17,6 +17,8 @@
     </div>
     <div id="top-bar-center">
         <button class="btn-toolbar btn-primary" id="btn-add-person" data-i18n="btn-add-person">+ 新增人员</button>
+        <button class="btn-toolbar btn-undo-redo" id="btn-undo" data-i18n-title="btn-undo-title" title="撤销 (Ctrl+Z)" disabled>↩</button>
+        <button class="btn-toolbar btn-undo-redo" id="btn-redo" data-i18n-title="btn-redo-title" title="重做 (Ctrl+Y)" disabled>↪</button>
         <span class="sep"></span>
         <button class="btn-toolbar" id="btn-import-json" data-i18n="btn-import-json">导入 JSON</button>
         <button class="btn-toolbar" id="btn-import-md"   data-i18n="btn-import-md">导入 MD</button>
@@ -54,6 +56,12 @@
         <span id="shortcut-hint" data-i18n="shortcut-hint"
               title="快捷键：Ctrl+N 新增 / +- 缩放 / F 适应 / 0 重置 / T 切换视图 / D 暗色 / Ctrl+P 打印 / ESC 关闭">⌨ 快捷键</span>
     </div>
+</div>
+
+<!-- 打印标题栏（仅打印时显示） -->
+<div id="print-title-bar">
+    <div id="print-title-text"></div>
+    <div id="print-subtitle">族谱 · 离线家族树</div>
 </div>
 
 <!-- 主布局 -->

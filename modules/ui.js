@@ -132,7 +132,11 @@ function renderPersonList(data) {
 
     let persons = data.persons;
     if (_searchQuery) {
-        persons = persons.filter(p => p.name.toLowerCase().includes(_searchQuery));
+        persons = persons.filter(p => {
+            if (p.name.toLowerCase().includes(_searchQuery)) return true;
+            const initials = getPinyinInitials(p.name);
+            return initials.includes(_searchQuery);
+        });
     }
 
     document.getElementById("person-count").textContent = data.persons.length;

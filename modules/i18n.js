@@ -143,7 +143,14 @@ const TRANSLATIONS = {
         "toast-file-renamed": "已重命名为「{name}」",
         "toast-file-last": "至少保留一个族谱文件",
         "form-birth-placeholder": "年份或完整日期，如 1920 或 1920-01-15",
-        "form-death-placeholder": "年份或完整日期，如 2005 或 2005-03-20"
+        "form-death-placeholder": "年份或完整日期，如 2005 或 2005-03-20",
+        "btn-undo-title": "撤销 (Ctrl+Z)",
+        "btn-redo-title": "重做 (Ctrl+Y)",
+        "toast-undo": "已撤销",
+        "toast-redo": "已重做",
+        "toast-no-undo": "没有可撤销的操作",
+        "toast-no-redo": "没有可重做的操作",
+        "toast-backup-remind": "💾 已编辑多次，建议导出 JSON 备份数据"
     },
     "zh-TW": {
         "app-title": "族譜",
@@ -285,7 +292,14 @@ const TRANSLATIONS = {
         "toast-file-renamed": "已重命名為「{name}」",
         "toast-file-last": "至少保留一個族譜檔案",
         "form-birth-placeholder": "年份或完整日期，如 1920 或 1920-01-15",
-        "form-death-placeholder": "年份或完整日期，如 2005 或 2005-03-20"
+        "form-death-placeholder": "年份或完整日期，如 2005 或 2005-03-20",
+        "btn-undo-title": "撤銷 (Ctrl+Z)",
+        "btn-redo-title": "重做 (Ctrl+Y)",
+        "toast-undo": "已撤銷",
+        "toast-redo": "已重做",
+        "toast-no-undo": "沒有可撤銷的操作",
+        "toast-no-redo": "沒有可重做的操作",
+        "toast-backup-remind": "💾 已編輯多次，建議匯出 JSON 備份"
     },
     "en": {
         "app-title": "Family Tree",
@@ -427,7 +441,14 @@ const TRANSLATIONS = {
         "toast-file-renamed": "Renamed to \"{name}\"",
         "toast-file-last": "Cannot delete the last genealogy file",
         "form-birth-placeholder": "Year or full date, e.g. 1920 or 1920-01-15",
-        "form-death-placeholder": "Year or full date, e.g. 2005 or 2005-03-20"
+        "form-death-placeholder": "Year or full date, e.g. 2005 or 2005-03-20",
+        "btn-undo-title": "Undo (Ctrl+Z)",
+        "btn-redo-title": "Redo (Ctrl+Y)",
+        "toast-undo": "Undone",
+        "toast-redo": "Redone",
+        "toast-no-undo": "Nothing to undo",
+        "toast-no-redo": "Nothing to redo",
+        "toast-backup-remind": "💾 Many edits made — consider exporting JSON as backup"
     }
 };
 

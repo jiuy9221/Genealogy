@@ -5,6 +5,12 @@ const DARK_STORAGE_KEY = "genealogy_darkMode";
 
 let familyData   = { persons: [], relationships: [], marriages: [] };
 let currentFileId = null;
+
+// ─── 撤销/重做 ─────────────────────────────────────────────────────────────
+const _undoStack = [];
+const _redoStack = [];
+let _changeCount = 0;
+const MAX_UNDO = 30;
 let svgPanOffset = { x: 0, y: 0 };
 let svgScale     = 1;
 let isPanning    = false;
@@ -83,6 +89,7 @@ window.onload = async () => {
     setupTreePan();
     setupKeyboard();
     setupExtraButtons();
+    setupUndoRedo();
     setupDarkMode();
     setupLangSwitcher();
     setupFileManager();
@@ -104,10 +111,57 @@ function tryLoadShareHash() {
 function initUI() { init(familyData, onDataChange); }
 
 function onDataChange(newData) {
+    _undoStack.push(JSON.stringify(familyData));
+    if (_undoStack.length > MAX_UNDO) _undoStack.shift();
+    _redoStack.length = 0;
     familyData = newData;
     if (currentFileId) saveGenealogyById(currentFileId, familyData);
     else saveToLocal(familyData);
+    _changeCount++;
+    if (_changeCount > 0 && _changeCount % 25 === 0) {
+        setTimeout(() => window.showToast && window.showToast(t("toast-backup-remind"), 5000), 300);
+    }
     refresh();
+    _syncUndoRedoBtns();
+}
+
+function performUndo() {
+    if (["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)) return;
+    if (!_undoStack.length) { window.showToast && window.showToast(t("toast-no-undo")); return; }
+    _redoStack.push(JSON.stringify(familyData));
+    familyData = JSON.parse(_undoStack.pop());
+    if (currentFileId) saveGenealogyById(currentFileId, familyData);
+    else saveToLocal(familyData);
+    refresh();
+    _syncUndoRedoBtns();
+    window.showToast && window.showToast(t("toast-undo"));
+}
+
+function performRedo() {
+    if (["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)) return;
+    if (!_redoStack.length) { window.showToast && window.showToast(t("toast-no-redo")); return; }
+    _undoStack.push(JSON.stringify(familyData));
+    familyData = JSON.parse(_redoStack.pop());
+    if (currentFileId) saveGenealogyById(currentFileId, familyData);
+    else saveToLocal(familyData);
+    refresh();
+    _syncUndoRedoBtns();
+    window.showToast && window.showToast(t("toast-redo"));
+}
+
+function _syncUndoRedoBtns() {
+    const bu = document.getElementById("btn-undo");
+    const br = document.getElementById("btn-redo");
+    if (bu) bu.disabled = _undoStack.length === 0;
+    if (br) br.disabled = _redoStack.length === 0;
+}
+
+function setupUndoRedo() {
+    const bu = document.getElementById("btn-undo");
+    const br = document.getElementById("btn-redo");
+    if (bu) bu.addEventListener("click", performUndo);
+    if (br) br.addEventListener("click", performRedo);
+    _syncUndoRedoBtns();
 }
 
 function _renderView(svg) {
@@ -165,10 +219,12 @@ window.highlightTreeNode = function(id) {
 // ─── 多族谱文件管理 ────────────────────────────────────────────────────────
 function updateFileNameDisplay() {
     const el = document.getElementById("current-file-name");
-    if (!el) return;
     const list = loadFileList();
     const entry = list.find(f => f.id === currentFileId);
-    el.textContent = entry ? entry.name : "";
+    const name = entry ? entry.name : "";
+    if (el) el.textContent = name;
+    const pt = document.getElementById("print-title-text");
+    if (pt) pt.textContent = name || t("app-title");
 }
 
 function switchToFile(id) {
@@ -177,6 +233,9 @@ function switchToFile(id) {
     currentFileId = id;
     setActiveFileId(id);
     familyData = loadGenealogyById(id) || defaultData();
+    _undoStack.length = 0;
+    _redoStack.length = 0;
+    _syncUndoRedoBtns();
     updateFileNameDisplay();
     _didInitialFit = false;
     refresh();
@@ -322,6 +381,8 @@ function setupKeyboard() {
         if ((e.ctrlKey || e.metaKey) && e.key === "n") { e.preventDefault(); document.getElementById("btn-add-person").click(); }
         if ((e.ctrlKey || e.metaKey) && e.key === "e") { e.preventDefault(); document.getElementById("btn-export-json").click(); }
         if ((e.ctrlKey || e.metaKey) && e.key === "p") { e.preventDefault(); window.print(); }
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === "z") { e.preventDefault(); performUndo(); }
+        if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.shiftKey && e.key === "Z") || (e.shiftKey && e.key === "z"))) { e.preventDefault(); performRedo(); }
         if (!e.ctrlKey && !e.metaKey) {
             if (e.key === "+" || e.key === "=") { svgScale = Math.min(3, svgScale * 1.15); applyTransform(); }
             if (e.key === "-")                  { svgScale = Math.max(0.2, svgScale / 1.15); applyTransform(); }

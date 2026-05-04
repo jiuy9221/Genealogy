@@ -153,3 +153,30 @@
   - 搜索支持拼音首字母模糊匹配
   - 人员关系图（从某人出发显示其直系亲属子树）
   - 多设备同步提示（提示用户定期导出 JSON 作为备份）
+
+## 2026-05-04 (Session 2)
+- 更新文件：modules/data.js、modules/ui.js、app.js、index.html、modules/i18n.js、style.css
+- 新增功能：
+  - **拼音首字母搜索**（data.js + ui.js）：
+    - `modules/data.js` 新增 `_PINYIN` 常量（收录 260+ 个常用中文汉字→拼音首字母映射，覆盖百家姓全集 + 常见名字字）；`getPinyinInitials(name)` 将姓名逐字转为首字母串；
+    - `modules/ui.js` 搜索过滤器升级：先检查直接字符匹配，再回退到 `getPinyinInitials` 拼音首字母匹配（`includes`）；例如输入 "ls" 可找到李四、林森，输入 "zh" 可找到张红，输入 "wl" 可找到王林；
+  - **撤销/重做系统**（app.js + index.html + i18n.js + style.css）：
+    - `app.js` 新增 `_undoStack[]`、`_redoStack[]`（最多保留 30 步）、`_changeCount` 计数器；
+    - `onDataChange` 回调在更新前自动 push 当前快照到 `_undoStack`，新操作时清空 `_redoStack`；
+    - `performUndo()` / `performRedo()` 实现双向历史跳转，跳转后自动保存并刷新树视图；
+    - 键盘快捷键：`Ctrl+Z` 撤销、`Ctrl+Y` / `Ctrl+Shift+Z` 重做；当焦点在输入框内时不拦截，避免干扰文字编辑；
+    - `setupUndoRedo()` 绑定工具栏 ↩/↪ 按钮，`_syncUndoRedoBtns()` 根据历史栈长度同步按钮 `disabled` 状态；
+    - 切换族谱文件（`switchToFile`）时自动清空两栈，防止跨文件混乱；
+    - index.html 工具栏「新增人员」右侧新增 ↩ 撤销 / ↪ 重做两个按钮；
+    - style.css `.btn-undo-redo` 专项样式：禁用态半透明、悬停高亮蓝色、暗色主题适配；
+  - **备份提醒**（app.js + i18n.js）：每编辑满 25 次，自动弹出 Toast「💾 已编辑多次，建议导出 JSON 备份数据」（5 秒显示）；三语均有对应翻译；
+  - **打印优化**（style.css + index.html）：
+    - index.html 新增 `#print-title-bar`（含 `#print-title-text` + `#print-subtitle`），普通模式隐藏，打印时显示族谱名称与副标题；
+    - `updateFileNameDisplay()` 同步更新 `#print-title-text` 内容；
+    - `@media print` 大幅强化：隐藏顶栏/侧面板/图例/Toast/文件管理弹窗；打印标题栏样式（22pt 大字 + 分隔线）；强制 `print-color-adjust: exact` 保留背景色；SVG 取消 transform 按原始尺寸输出；`@page` 横向 A4 + 12mm 边距；
+  - **7 个新 i18n 键**（三语 × 7 = 21 条）：`btn-undo-title`、`btn-redo-title`、`toast-undo`、`toast-redo`、`toast-no-undo`、`toast-no-redo`、`toast-backup-remind`
+- 下一步：
+  - 聚焦模式：从某人出发仅渲染其直系亲属子树（父母/兄弟/配偶/子女）
+  - 导出 PDF（@media print 已完善，考虑添加 jsPDF 离线方案）
+  - 搜索结果计数显示（"找到 N 位"）
+  - 节点右键菜单（快速添加关系）
