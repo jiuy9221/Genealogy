@@ -5,6 +5,10 @@ let _selectedId = null;
 let _onDataChange = null;
 let _searchQuery = "";
 
+function _escHtml(s) {
+    return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 // ─── 初始化 ────────────────────────────────────────────────────────────
 function init(data, onDataChange) {
     _data = data;
@@ -32,6 +36,24 @@ function bindButtons() {
     searchInput.addEventListener("input", e => {
         _searchQuery = e.target.value.trim().toLowerCase();
         renderPersonList(_data);
+    });
+    // Arrow key navigation from search input
+    searchInput.addEventListener("keydown", e => {
+        if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Enter") return;
+        const items = [...document.querySelectorAll("#person-list .person-item")];
+        if (!items.length) return;
+        e.preventDefault();
+        if (e.key === "Enter") {
+            const sel = items.find(el => el.classList.contains("selected"));
+            if (sel) sel.click();
+            return;
+        }
+        const cur = items.findIndex(el => el.classList.contains("selected"));
+        let next = e.key === "ArrowDown" ? cur + 1 : cur - 1;
+        if (next < 0) next = items.length - 1;
+        if (next >= items.length) next = 0;
+        items[next].click();
+        items[next].scrollIntoView({ block: "nearest" });
     });
 
     // 模态框关闭
@@ -216,7 +238,7 @@ function renderPersonEditor(id) {
 
     const otherOptions = _data.persons.filter(x => x.id !== id)
         .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"))
-        .map(x => `<option value="${x.id}">${x.name}</option>`).join("");
+        .map(x => `<option value="${x.id}">${_escHtml(x.name)}</option>`).join("");
 
     const genderLabel = p.gender === "male" ? t("tag-male") : p.gender === "female" ? t("tag-female") : t("tag-unknown");
     const genderClass = p.gender === "male" ? "male" : p.gender === "female" ? "female" : "";
@@ -268,7 +290,7 @@ ${pathHtml}
 <div class="editor-section">
   <h5>${t("editor-section-parents")} <span class="count-badge small">${parents.length}</span></h5>
   <ul class="rel-list">
-    ${parents.map(par => `<li><span>${par.name}</span><button class="btn-xs btn-danger" onclick="doRemoveRelationship('${par.id}','${id}')">${t("editor-remove-btn")}</button></li>`).join("") || `<li class='empty'>${t("empty-rel")}</li>`}
+    ${parents.map(par => `<li><span>${_escHtml(par.name)}</span><button class="btn-xs btn-danger" onclick="doRemoveRelationship('${par.id}','${id}')">${t("editor-remove-btn")}</button></li>`).join("") || `<li class='empty'>${t("empty-rel")}</li>`}
   </ul>
   <div class="rel-add-row">
     <select id="sel-parent"><option value="">${t("editor-select-parent")}</option>${otherOptions}</select>
@@ -279,7 +301,7 @@ ${pathHtml}
 <div class="editor-section">
   <h5>${t("editor-section-children")} <span class="count-badge small">${children.length}</span></h5>
   <ul class="rel-list">
-    ${children.map(ch => `<li><span>${ch.name}</span><button class="btn-xs btn-danger" onclick="doRemoveRelationship('${id}','${ch.id}')">${t("editor-remove-btn")}</button></li>`).join("") || `<li class='empty'>${t("empty-rel")}</li>`}
+    ${children.map(ch => `<li><span>${_escHtml(ch.name)}</span><button class="btn-xs btn-danger" onclick="doRemoveRelationship('${id}','${ch.id}')">${t("editor-remove-btn")}</button></li>`).join("") || `<li class='empty'>${t("empty-rel")}</li>`}
   </ul>
   <div class="rel-add-row">
     <select id="sel-child"><option value="">${t("editor-select-child")}</option>${otherOptions}</select>
@@ -290,13 +312,15 @@ ${pathHtml}
 <div class="editor-section">
   <h5>${t("editor-section-spouses")} <span class="count-badge small">${spouses.length}</span></h5>
   <ul class="rel-list">
-    ${spouses.map(sp => `<li><span>${sp.name}</span><button class="btn-xs btn-danger" onclick="doRemoveMarriage('${id}','${sp.id}')">${t("editor-remove-btn")}</button></li>`).join("") || `<li class='empty'>${t("empty-rel")}</li>`}
+    ${spouses.map(sp => `<li><span>${_escHtml(sp.name)}</span><button class="btn-xs btn-danger" onclick="doRemoveMarriage('${id}','${sp.id}')">${t("editor-remove-btn")}</button></li>`).join("") || `<li class='empty'>${t("empty-rel")}</li>`}
   </ul>
   <div class="rel-add-row">
     <select id="sel-spouse"><option value="">${t("editor-select-spouse")}</option>${otherOptions}</select>
     <button class="btn-sm btn-primary" onclick="doAddSpouse('${id}')">${t("editor-add-btn")}</button>
   </div>
 </div>
+
+${_buildEventsSection(p, id)}
 `;
 }
 
@@ -317,6 +341,57 @@ function buildAncestorPathHtml(path, currentId) {
   </div>
 </div>`;
 }
+
+// ─── 生平事件区块构建 ─────────────────────────────────────────────────
+const EVENT_TYPES = ["birth","death","marriage","migration","education","career","other"];
+
+function _buildEventsSection(p, id) {
+    const events = (p.events || []).slice().sort((a, b) => {
+        const ya = a.year ? parseInt(a.year) : Infinity;
+        const yb = b.year ? parseInt(b.year) : Infinity;
+        return ya - yb;
+    });
+    const typeOptions = EVENT_TYPES
+        .map(tp => `<option value="${tp}">${t("event-type-" + tp)}</option>`)
+        .join("");
+    const listHtml = events.map(ev => `
+<li class="event-item">
+  <span class="event-year">${_escHtml(ev.year || "?")}</span>
+  <span class="event-type-tag ev-${ev.type}">${t("event-type-" + ev.type)}</span>
+  <span class="event-desc">${_escHtml(ev.desc)}</span>
+  <button class="btn-xs btn-danger" onclick="doRemoveEvent('${id}','${ev.id}')">&times;</button>
+</li>`).join("") || `<li class="empty">${t("empty-events")}</li>`;
+
+    return `
+<div class="editor-section">
+  <h5>${t("editor-section-events")} <span class="count-badge small">${events.length}</span></h5>
+  <ul class="events-list">${listHtml}</ul>
+  <div class="event-add-row">
+    <input id="ev-year-inp" type="text" class="ev-year-input" placeholder="${t("ev-year-placeholder")}" maxlength="4" />
+    <select id="ev-type-sel" class="ev-type-select">${typeOptions}</select>
+    <input id="ev-desc-inp" type="text" class="ev-desc-input" placeholder="${t("ev-desc-placeholder")}" />
+    <button class="btn-sm btn-primary" onclick="doAddEvent('${id}')">${t("ev-add-btn")}</button>
+  </div>
+</div>`;
+}
+
+window.doAddEvent = function(personId) {
+    const year = (document.getElementById("ev-year-inp")?.value || "").trim();
+    const type = document.getElementById("ev-type-sel")?.value || "other";
+    const desc = (document.getElementById("ev-desc-inp")?.value || "").trim();
+    if (!desc && !year) return;
+    addLifeEvent(_data, personId, { year, type, desc });
+    _onDataChange(_data);
+    renderPersonEditor(personId);
+    showToast(t("toast-event-added"));
+};
+
+window.doRemoveEvent = function(personId, eventId) {
+    removeLifeEvent(_data, personId, eventId);
+    _onDataChange(_data);
+    renderPersonEditor(personId);
+    showToast(t("toast-event-removed"));
+};
 
 // ─── 关系操作（innerHTML onclick 调用需挂到 window）──────────────────
 window.doAddParent = function(childId) {
@@ -375,7 +450,6 @@ window.showEditPersonModal = function(id) {
 
 function buildPersonForm(p) {
     const escAttr = s => (s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;");
-    const escHtml = s => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const initChar = p?.name?.charAt(0) || "?";
     const avatarContent = p?.photo
         ? `<img src="${escAttr(p.photo)}" alt="头像" />`
@@ -428,7 +502,7 @@ function buildPersonForm(p) {
 </div>
 <div class="form-group">
   <label>${t("form-notes")}</label>
-  <textarea id="f-notes" rows="3" placeholder="${t("form-notes-placeholder")}">${escHtml(p?.notes)}</textarea>
+  <textarea id="f-notes" rows="3" placeholder="${t("form-notes-placeholder")}">${_escHtml(p?.notes)}</textarea>
 </div>`;
 }
 

@@ -101,6 +101,13 @@ function exportMarkdown(data) {
         md += `- 出生: ${p.birth || "不详"}\n`;
         if (p.death) md += `- 死亡: ${p.death}\n`;
         if (p.notes) md += `- 备注: ${p.notes}\n`;
+        if (p.events && p.events.length) {
+            md += "- 生平事件:\n";
+            const sorted = [...p.events].sort((a, b) => (parseInt(a.year) || 0) - (parseInt(b.year) || 0));
+            sorted.forEach(ev => {
+                md += `  - ${ev.year || "?"} [${ev.type}] ${ev.desc}\n`;
+            });
+        }
         md += "\n";
     });
     md += "## 亲子关系\n\n";
@@ -183,9 +190,22 @@ function downloadBlob(blob, filename) {
 }
 
 function addPerson(data, fields) {
-    const person = { id: generateId(), name: "", gender: "", birth: "", death: "", notes: "", ...fields };
+    const person = { id: generateId(), name: "", gender: "", birth: "", death: "", notes: "", events: [], ...fields };
     data.persons.push(person);
     return person;
+}
+
+function addLifeEvent(data, personId, ev) {
+    const p = data.persons.find(x => x.id === personId);
+    if (!p) return;
+    if (!p.events) p.events = [];
+    p.events.push({ id: generateId(), year: ev.year || "", type: ev.type || "other", desc: ev.desc || "" });
+}
+
+function removeLifeEvent(data, personId, eventId) {
+    const p = data.persons.find(x => x.id === personId);
+    if (!p || !p.events) return;
+    p.events = p.events.filter(e => e.id !== eventId);
 }
 
 function updatePerson(data, id, fields) {

@@ -1262,3 +1262,105 @@ body.dark-mode .ctx-divider { background: #334155; }
     letter-spacing: .3px;
 }
 body.dark-mode .search-count { color: #64748b; }
+
+/* ===== 生平事件区块 ===== */
+.events-list {
+    list-style: none;
+    margin: 0 0 8px;
+    padding: 0;
+}
+.event-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 4px;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 12px;
+    flex-wrap: nowrap;
+}
+.event-item:last-child { border-bottom: none; }
+.event-year {
+    font-weight: 700;
+    color: var(--color-primary);
+    min-width: 34px;
+    flex-shrink: 0;
+    font-size: 12px;
+}
+.event-type-tag {
+    padding: 1px 6px;
+    border-radius: 99px;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+    white-space: nowrap;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+/* per-type color coding */
+.ev-birth     { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+.ev-death     { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+.ev-marriage  { background: #fce7f3; color: #be185d; border-color: #f9a8d4; }
+.ev-migration { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
+.ev-education { background: #fffbeb; color: #92400e; border-color: #fcd34d; }
+.ev-career    { background: #f5f3ff; color: #5b21b6; border-color: #c4b5fd; }
+.ev-other     { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+
+.event-desc {
+    flex: 1;
+    color: var(--color-text);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.event-add-row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-top: 4px;
+}
+.ev-year-input {
+    width: 52px;
+    flex-shrink: 0;
+    padding: 4px 5px;
+    font-size: 12px;
+    border: 1.5px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+.ev-type-select {
+    flex-shrink: 0;
+    padding: 4px 5px;
+    font-size: 12px;
+    border: 1.5px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    max-width: 88px;
+}
+.ev-desc-input {
+    flex: 1;
+    min-width: 0;
+    padding: 4px 7px;
+    font-size: 12px;
+    border: 1.5px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+/* dark mode for events */
+body.dark-mode .event-type-tag { background: #334155; color: #94a3b8; border-color: #475569; }
+body.dark-mode .ev-birth     { background: #1e3a8a; color: #93c5fd; border-color: #1d4ed8; }
+body.dark-mode .ev-death     { background: #7f1d1d; color: #fca5a5; border-color: #b91c1c; }
+body.dark-mode .ev-marriage  { background: #831843; color: #f9a8d4; border-color: #be185d; }
+body.dark-mode .ev-migration { background: #064e3b; color: #6ee7b7; border-color: #065f46; }
+body.dark-mode .ev-education { background: #78350f; color: #fcd34d; border-color: #92400e; }
+body.dark-mode .ev-career    { background: #4c1d95; color: #c4b5fd; border-color: #5b21b6; }
+body.dark-mode .ev-other     { background: #1e293b; color: #94a3b8; border-color: #334155; }
+body.dark-mode .ev-year-input,
+body.dark-mode .ev-type-select,
+body.dark-mode .ev-desc-input { border-color: #334155; }

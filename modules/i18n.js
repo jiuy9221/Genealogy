@@ -161,7 +161,22 @@ const TRANSLATIONS = {
         "ctx-exit-focus": "退出聚焦",
         "ctx-center": "居中查看",
         "search-count-all": "共 {n} 人",
-        "search-count-filtered": "找到 {f} / {n} 人"
+        "search-count-filtered": "找到 {f} / {n} 人",
+        "editor-section-events": "生平事件",
+        "empty-events": "暂无生平事件",
+        "event-type-birth": "出生",
+        "event-type-death": "去世",
+        "event-type-marriage": "婚姻",
+        "event-type-migration": "迁居",
+        "event-type-education": "学历",
+        "event-type-career": "工作",
+        "event-type-other": "其他",
+        "ev-year-placeholder": "年份",
+        "ev-desc-placeholder": "事件描述",
+        "ev-add-btn": "添加",
+        "toast-event-added": "已添加生平事件",
+        "toast-event-removed": "已删除生平事件",
+        "longpress-hint": "长按节点显示菜单（移动端）"
     },
     "zh-TW": {
         "app-title": "族譜",
@@ -321,7 +336,22 @@ const TRANSLATIONS = {
         "ctx-exit-focus": "退出聚焦",
         "ctx-center": "居中查看",
         "search-count-all": "共 {n} 人",
-        "search-count-filtered": "找到 {f} / {n} 人"
+        "search-count-filtered": "找到 {f} / {n} 人",
+        "editor-section-events": "生平事件",
+        "empty-events": "暫無生平事件",
+        "event-type-birth": "出生",
+        "event-type-death": "去世",
+        "event-type-marriage": "婚姻",
+        "event-type-migration": "遷居",
+        "event-type-education": "學歷",
+        "event-type-career": "工作",
+        "event-type-other": "其他",
+        "ev-year-placeholder": "年份",
+        "ev-desc-placeholder": "事件描述",
+        "ev-add-btn": "添加",
+        "toast-event-added": "已添加生平事件",
+        "toast-event-removed": "已刪除生平事件",
+        "longpress-hint": "長按節點顯示選單（行動裝置）"
     },
     "en": {
         "app-title": "Family Tree",
@@ -481,7 +511,22 @@ const TRANSLATIONS = {
         "ctx-exit-focus": "Exit focus",
         "ctx-center": "Center view",
         "search-count-all": "Total: {n}",
-        "search-count-filtered": "Found {f} of {n}"
+        "search-count-filtered": "Found {f} of {n}",
+        "editor-section-events": "Life Events",
+        "empty-events": "No events recorded",
+        "event-type-birth": "Birth",
+        "event-type-death": "Death",
+        "event-type-marriage": "Marriage",
+        "event-type-migration": "Migration",
+        "event-type-education": "Education",
+        "event-type-career": "Career",
+        "event-type-other": "Other",
+        "ev-year-placeholder": "Year",
+        "ev-desc-placeholder": "Event description",
+        "ev-add-btn": "Add",
+        "toast-event-added": "Life event added",
+        "toast-event-removed": "Life event removed",
+        "longpress-hint": "Long-press node for menu (mobile)"
     }
 };
 

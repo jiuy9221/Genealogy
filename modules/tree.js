@@ -346,6 +346,21 @@ function _renderNodeGroup(p, pos, onNodeClick, enableDrag) {
         _showContextMenu(p.id, e.clientX, e.clientY);
     });
 
+    // Mobile long-press (600ms) shows context menu
+    let _lpTimer = null;
+    g.addEventListener("touchstart", e => {
+        if (e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        _lpTimer = setTimeout(() => {
+            _lpTimer = null;
+            _showContextMenu(p.id, touch.clientX, touch.clientY);
+        }, 600);
+    }, { passive: true });
+    const _cancelLp = () => { if (_lpTimer) { clearTimeout(_lpTimer); _lpTimer = null; } };
+    g.addEventListener("touchend",    _cancelLp, { passive: true });
+    g.addEventListener("touchmove",   _cancelLp, { passive: true });
+    g.addEventListener("touchcancel", _cancelLp, { passive: true });
+
     if (enableDrag) {
         g.addEventListener("mousedown", e => {
             if (e.button !== 0) return;

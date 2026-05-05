@@ -208,3 +208,24 @@
   - 人员关系图（从某人出发的直系亲属可视化子图）
   - 族谱树节点批注/事件（婚姻年份、迁徙记录等）
   - 移动端优化（触摸长按代替右键菜单）
+
+## 2026-05-05 (第二次推进)
+- 更新文件：modules/data.js、modules/ui.js、modules/tree.js、modules/i18n.js、style.css
+- 新增功能：
+  - **生平事件系统（Life Events）**（data.js + ui.js + i18n.js + style.css）：
+    - `data.js` `addPerson` 默认携带 `events: []` 字段；新增 `addLifeEvent(data, personId, ev)` — 向指定人员追加 `{id, year, type, desc}` 事件记录；新增 `removeLifeEvent(data, personId, eventId)` — 按 ID 删除单条事件；`exportMarkdown` 扩展输出「生平事件」子列表；
+    - `ui.js` 新增 `_buildEventsSection(p, id)` 函数，在编辑面板人员信息下方渲染完整生平事件区块：按年份升序排列的事件列表（年份 + 彩色类型标签 + 描述 + × 删除按钮）+ 行内「年份 / 类型 / 描述 / 添加」快捷录入行；新增 `window.doAddEvent` / `window.doRemoveEvent` 操作函数，修改后触发 `_onDataChange` + `renderPersonEditor` 刷新；
+    - 事件类型七种：出生、去世、婚姻、迁居、学历、工作、其他，各有独立配色（蓝/红/粉/绿/黄/紫/灰），深色主题均完整适配；
+    - `style.css` 新增 `.events-list`、`.event-item`、`.event-year`、`.event-type-tag`、`.ev-{type}` × 7、`.event-desc`、`.event-add-row`、`.ev-year-input`、`.ev-type-select`、`.ev-desc-input` 共 25 条样式规则；
+    - `i18n.js` 三语各新增 16 个键（事件类型标签 × 7 + 占位符/按钮/Toast × 6 + 长按提示 × 1 = 共 48 条翻译）。
+  - **移动端长按菜单**（tree.js）：
+    - `_renderNodeGroup` 节点元素上注册 `touchstart` / `touchend` / `touchmove` / `touchcancel` 四个事件；`touchstart` 开始 600ms 计时器，若未中断则调用 `_showContextMenu` 在触摸坐标弹出右键菜单；任何手势移动或抬起均 `clearTimeout` 取消，避免误触发；`passive: true` 保证不影响滚动性能。
+  - **搜索框键盘导航**（ui.js）：
+    - 搜索框 `keydown` 监听器：↑/↓ 方向键在过滤后的人员列表中上下移动选中（循环回绕），`Enter` 键触发当前高亮项 `click()`；`scrollIntoView({ block: "nearest" })` 确保选中项可见；切换选中同时调用 `selectPerson` + `highlightTreeNode`，与列表点击行为完全一致。
+  - **HTML 转义安全性加固**（ui.js）：
+    - 提取模块级 `_escHtml(s)` 函数；`renderPersonEditor` 内父母/子女/配偶/事件描述、`buildPersonForm` 内备注文本全部经过 HTML 转义，防止姓名/备注中含特殊字符时 XSS 渲染错误。
+- 下一步：
+  - 导出 PDF（jsPDF 离线库或 @media print 强化版）
+  - 节点上方显示事件计数徽章（如 "3 events"）
+  - 生平事件时间轴视图联动（事件气泡在时间轴节点附近标注）
+  - 人员卡片迷你关系图（右侧面板内嵌 SVG 显示直系亲属结构）
