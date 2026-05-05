@@ -17,6 +17,52 @@ let   _dragHandlersInitialized = false;
 let   _currentViewMode = "tree"; // "tree" | "timeline"
 window._nodeDragActive = false;
 
+// ─── 右键快捷菜单 ─────────────────────────────────────────────────────────
+let _ctxMenuEl = null;
+
+function _hideContextMenu() {
+    if (_ctxMenuEl) { _ctxMenuEl.remove(); _ctxMenuEl = null; }
+}
+window.hideContextMenu = _hideContextMenu;
+
+function _showContextMenu(personId, clientX, clientY) {
+    _hideContextMenu();
+
+    const isFocused = window.isFocusActive && window.isFocusActive(personId);
+
+    const menu = document.createElement("div");
+    menu.className = "ctx-menu";
+    menu.innerHTML = `
+<button class="ctx-item" data-action="edit">✏️ <span>${t("ctx-edit")}</span></button>
+<button class="ctx-item danger" data-action="delete">🗑️ <span>${t("ctx-delete")}</span></button>
+<div class="ctx-divider"></div>
+<button class="ctx-item" data-action="focus">${isFocused ? "✖" : "🎯"} <span>${isFocused ? t("ctx-exit-focus") : t("ctx-focus")}</span></button>
+<button class="ctx-item" data-action="center">📍 <span>${t("ctx-center")}</span></button>`;
+
+    menu.style.left = clientX + "px";
+    menu.style.top  = clientY + "px";
+    document.body.appendChild(menu);
+    _ctxMenuEl = menu;
+
+    // Keep menu within viewport
+    const rect = menu.getBoundingClientRect();
+    if (rect.right  > window.innerWidth)  menu.style.left = (clientX - rect.width)  + "px";
+    if (rect.bottom > window.innerHeight) menu.style.top  = (clientY - rect.height) + "px";
+
+    menu.addEventListener("click", e => {
+        const btn = e.target.closest(".ctx-item");
+        if (!btn) return;
+        _hideContextMenu();
+        if (window._onContextMenuAction) window._onContextMenuAction(btn.dataset.action, personId);
+    });
+
+    // Close on any outside click or right-click
+    setTimeout(() => {
+        document.addEventListener("click",       _hideContextMenu, { once: true });
+        document.addEventListener("contextmenu", _hideContextMenu, { once: true });
+    }, 10);
+}
+
 // ─── 拖拽偏移 API（供 app.js 调用）──────────────────────────────────────
 function clearCustomOffsets() { Object.keys(_customOffsets).forEach(k => delete _customOffsets[k]); }
 function getCustomOffsets()   { return JSON.parse(JSON.stringify(_customOffsets)); }
@@ -292,6 +338,13 @@ function _renderNodeGroup(p, pos, onNodeClick, enableDrag) {
     _nodeGroups[p.id] = g;
 
     g.addEventListener("click", () => { if (!_wasDragging) onNodeClick && onNodeClick(p.id); });
+
+    // Right-click context menu (both tree and timeline modes)
+    g.addEventListener("contextmenu", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        _showContextMenu(p.id, e.clientX, e.clientY);
+    });
 
     if (enableDrag) {
         g.addEventListener("mousedown", e => {

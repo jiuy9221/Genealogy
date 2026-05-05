@@ -29,7 +29,7 @@ const TRANSLATIONS = {
         "legend-female": "■ 女性",
         "legend-parent": "—— 亲子",
         "legend-spouse": "- - 配偶",
-        "legend-shortcuts": "+/- 缩放  F 适应  T 切换视图  D 暗色  0 重置  拖拽节点（树模式）",
+        "legend-shortcuts": "+/- 缩放  F 适应  T 切换视图  G 聚焦  D 暗色  0 重置  右键节点菜单",
         "shortcut-hint": "⌨ 快捷键",
         "editor-placeholder": "点击左侧人员<br>或族谱树节点查看详情",
         "editor-edit-btn": "编辑",
@@ -150,7 +150,18 @@ const TRANSLATIONS = {
         "toast-redo": "已重做",
         "toast-no-undo": "没有可撤销的操作",
         "toast-no-redo": "没有可重做的操作",
-        "toast-backup-remind": "💾 已编辑多次，建议导出 JSON 备份数据"
+        "toast-backup-remind": "💾 已编辑多次，建议导出 JSON 备份数据",
+        "focus-btn": "聚焦",
+        "focus-exit-btn": "退出聚焦",
+        "focus-banner": "{name} 的直系亲属",
+        "focus-mode-label": "聚焦模式",
+        "ctx-edit": "编辑此人",
+        "ctx-delete": "删除此人",
+        "ctx-focus": "聚焦此人",
+        "ctx-exit-focus": "退出聚焦",
+        "ctx-center": "居中查看",
+        "search-count-all": "共 {n} 人",
+        "search-count-filtered": "找到 {f} / {n} 人"
     },
     "zh-TW": {
         "app-title": "族譜",
@@ -178,7 +189,7 @@ const TRANSLATIONS = {
         "legend-female": "■ 女性",
         "legend-parent": "—— 親子",
         "legend-spouse": "- - 配偶",
-        "legend-shortcuts": "+/- 縮放  F 適應  T 切換視圖  D 暗色  0 重置  拖拽節點（樹模式）",
+        "legend-shortcuts": "+/- 縮放  F 適應  T 切換視圖  G 聚焦  D 暗色  0 重置  右鍵節點選單",
         "shortcut-hint": "⌨ 快捷鍵",
         "editor-placeholder": "點擊左側人員<br>或族譜樹節點查看詳情",
         "editor-edit-btn": "編輯",
@@ -299,7 +310,18 @@ const TRANSLATIONS = {
         "toast-redo": "已重做",
         "toast-no-undo": "沒有可撤銷的操作",
         "toast-no-redo": "沒有可重做的操作",
-        "toast-backup-remind": "💾 已編輯多次，建議匯出 JSON 備份"
+        "toast-backup-remind": "💾 已編輯多次，建議匯出 JSON 備份",
+        "focus-btn": "聚焦",
+        "focus-exit-btn": "退出聚焦",
+        "focus-banner": "{name} 的直系親屬",
+        "focus-mode-label": "聚焦模式",
+        "ctx-edit": "編輯此人",
+        "ctx-delete": "刪除此人",
+        "ctx-focus": "聚焦此人",
+        "ctx-exit-focus": "退出聚焦",
+        "ctx-center": "居中查看",
+        "search-count-all": "共 {n} 人",
+        "search-count-filtered": "找到 {f} / {n} 人"
     },
     "en": {
         "app-title": "Family Tree",
@@ -327,7 +349,7 @@ const TRANSLATIONS = {
         "legend-female": "■ Female",
         "legend-parent": "— Parent",
         "legend-spouse": "- - Spouse",
-        "legend-shortcuts": "+/- zoom  F fit  T toggle view  D dark  0 reset  drag nodes (tree)",
+        "legend-shortcuts": "+/- zoom  F fit  T toggle view  G focus  D dark  0 reset  right-click menu",
         "shortcut-hint": "⌨ Shortcuts",
         "editor-placeholder": "Click a person on the left<br>or a tree node to view details",
         "editor-edit-btn": "Edit",
@@ -448,7 +470,18 @@ const TRANSLATIONS = {
         "toast-redo": "Redone",
         "toast-no-undo": "Nothing to undo",
         "toast-no-redo": "Nothing to redo",
-        "toast-backup-remind": "💾 Many edits made — consider exporting JSON as backup"
+        "toast-backup-remind": "💾 Many edits made — consider exporting JSON as backup",
+        "focus-btn": "Focus",
+        "focus-exit-btn": "Exit Focus",
+        "focus-banner": "Direct relatives of {name}",
+        "focus-mode-label": "Focus Mode",
+        "ctx-edit": "Edit person",
+        "ctx-delete": "Delete person",
+        "ctx-focus": "Focus on this person",
+        "ctx-exit-focus": "Exit focus",
+        "ctx-center": "Center view",
+        "search-count-all": "Total: {n}",
+        "search-count-filtered": "Found {f} of {n}"
     }
 };
 

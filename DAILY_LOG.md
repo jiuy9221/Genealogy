@@ -180,3 +180,31 @@
   - 导出 PDF（@media print 已完善，考虑添加 jsPDF 离线方案）
   - 搜索结果计数显示（"找到 N 位"）
   - 节点右键菜单（快速添加关系）
+
+## 2026-05-05
+- 更新文件：modules/tree.js、modules/ui.js、modules/i18n.js、app.js、index.html、style.css
+- 新增功能：
+  - **聚焦模式（Focus Mode）**（app.js + index.html + style.css + ui.js）：
+    - `buildFocusData(data, personId)` — 计算直系亲属子集：目标人员 + 父母 + 兄弟姐妹（共父母）+ 子女 + 配偶 + 父母配偶 + 子女配偶，保留所有相关亲子/婚姻关系；
+    - `_renderView` 在聚焦模式下将过滤数据传入 `renderTree` / `renderTimeline`，全量数据仍用于左侧人员列表和右侧编辑器；
+    - 顶栏与布局之间新增蓝紫渐变**聚焦横幅**（`#focus-banner`）：显示"聚焦模式"标签 + 人员姓名 + 「退出聚焦」按钮；进入/退出时触发 `autoFitTree()` 重新适应视口；
+    - 右侧编辑器 `.editor-actions` 新增 🎯 按钮（`btn-focus`），激活时高亮蓝色；`window.isFocusActive(id)` 供按钮动态着色；
+    - `window.enterFocusMode(id)` / `window.exitFocusMode()` / `window.toggleFocusMode(id)` 三个全局接口；
+    - 键盘快捷键 **G** 切换当前聚焦状态；切换族谱文件时自动退出聚焦；语言切换后横幅文字自动同步；
+    - style.css：聚焦横幅动画 `focus-banner-in`、`.focus-mode-label` 蓝色胶囊标签、`.btn-focus` 紫色按钮、完整暗色主题适配。
+  - **右键快捷菜单（Context Menu）**（tree.js + style.css）：
+    - `_showContextMenu(personId, clientX, clientY)` — 在点击坐标处生成浮动菜单，自动检测越界并调整位置；
+    - 菜单项：✏️ 编辑此人、🗑️ 删除此人（danger 红色）、🎯 聚焦此人（动态切换为「退出聚焦」）、📍 居中查看；
+    - `_renderNodeGroup` 统一注册 `contextmenu` 事件（树模式和时间轴模式均支持），`e.preventDefault()` 阻止浏览器原生菜单；
+    - 点击菜单项后通过 `window._onContextMenuAction(action, personId)` 分发到 app.js 执行；点击菜单外或 ESC 自动关闭；
+    - style.css：`.ctx-menu` 圆角卡片 + pop 缩放动画、`.ctx-item` 悬停蓝色、`.ctx-item.danger` 红色高亮、`.ctx-divider` 分割线；完整暗色主题适配。
+  - **搜索结果计数（Search Count）**（ui.js + index.html + style.css）：
+    - 搜索框下方新增 `#search-count` 元素；搜索时显示「找到 F / N 人」，无搜索词时隐藏；
+    - 三语翻译：`search-count-all` / `search-count-filtered`（含 `{f}` / `{n}` 占位符）；
+    - style.css `.search-count` 细灰体居中显示，暗色主题适配。
+  - **i18n 扩展**：三语各新增 11 个键（focus-btn、focus-exit-btn、focus-banner、focus-mode-label、ctx-*×5、search-count-*×2）；图例快捷键提示更新，加入「G 聚焦」「右键节点菜单」说明。
+- 下一步：
+  - 导出 PDF（通过 @media print 或 jsPDF 离线库）
+  - 人员关系图（从某人出发的直系亲属可视化子图）
+  - 族谱树节点批注/事件（婚姻年份、迁徙记录等）
+  - 移动端优化（触摸长按代替右键菜单）

@@ -141,6 +141,19 @@ function renderPersonList(data) {
 
     document.getElementById("person-count").textContent = data.persons.length;
 
+    // Update search count indicator
+    const countEl = document.getElementById("search-count");
+    if (countEl) {
+        if (_searchQuery) {
+            countEl.textContent = t("search-count-filtered")
+                .replace("{f}", persons.length)
+                .replace("{n}", data.persons.length);
+            countEl.style.display = "block";
+        } else {
+            countEl.style.display = "none";
+        }
+    }
+
     if (!persons.length) {
         const li = document.createElement("li");
         li.className = "empty-hint";
@@ -237,6 +250,9 @@ function renderPersonEditor(id) {
     </div>
     <div class="editor-actions">
       <button class="btn-sm btn-primary" onclick="showEditPersonModal('${id}')">${t("editor-edit-btn")}</button>
+      <button class="btn-sm btn-focus${window.isFocusActive && window.isFocusActive(id) ? " active" : ""}"
+              onclick="window.toggleFocusMode && window.toggleFocusMode('${id}')"
+              title="${t('focus-btn')}">🎯</button>
       <button class="btn-sm btn-danger"  onclick="confirmDeletePerson('${id}')">${t("editor-delete-btn")}</button>
     </div>
   </div>

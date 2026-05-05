@@ -58,6 +58,15 @@
     </div>
 </div>
 
+<!-- 聚焦模式横幅 -->
+<div id="focus-banner" style="display:none;">
+    <span class="focus-banner-icon">🎯</span>
+    <span id="focus-mode-label" class="focus-mode-label" data-i18n="focus-mode-label">聚焦模式</span>
+    <span class="focus-banner-sep">·</span>
+    <span id="focus-banner-text"></span>
+    <button id="focus-exit-btn" class="btn-focus-exit" data-i18n="focus-exit-btn">退出聚焦</button>
+</div>
+
 <!-- 打印标题栏（仅打印时显示） -->
 <div id="print-title-bar">
     <div id="print-title-text"></div>
@@ -76,6 +85,7 @@
             <input type="search" id="person-search"
                    data-i18n="search-placeholder"
                    placeholder="🔍 搜索姓名…" autocomplete="off" />
+            <div id="search-count" class="search-count" style="display:none;"></div>
         </div>
         <ul id="person-list"></ul>
     </div>
@@ -123,7 +133,7 @@
     <span class="legend-item line-parent" data-i18n="legend-parent">—— 亲子</span>
     <span class="legend-item line-spouse" data-i18n="legend-spouse">- - 配偶</span>
     <span class="legend-sep">|</span>
-    <span class="legend-item kbd" data-i18n="legend-shortcuts">+/- 缩放 &nbsp; F 适应 &nbsp; T 切换视图 &nbsp; D 暗色 &nbsp; 0 重置 &nbsp; 拖拽节点（树模式）</span>
+    <span class="legend-item kbd" data-i18n="legend-shortcuts">+/- 缩放 &nbsp; F 适应 &nbsp; T 切换视图 &nbsp; G 聚焦 &nbsp; D 暗色 &nbsp; 0 重置 &nbsp; 右键节点菜单</span>
 </div>
 
 <script src="modules/i18n.js"></script>

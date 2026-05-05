@@ -6,6 +6,10 @@ const DARK_STORAGE_KEY = "genealogy_darkMode";
 let familyData   = { persons: [], relationships: [], marriages: [] };
 let currentFileId = null;
 
+// ─── 聚焦模式 ─────────────────────────────────────────────────────────────
+let _focusMode     = false;
+let _focusPersonId = null;
+
 // ─── 撤销/重做 ─────────────────────────────────────────────────────────────
 const _undoStack = [];
 const _redoStack = [];
@@ -43,6 +47,10 @@ window.onload = async () => {
     window._onLangChange = () => {
         applyI18n();
         syncDarkBtn(document.getElementById("btn-dark-mode"));
+        if (_focusMode && _focusPersonId) {
+            const person = familyData.persons.find(p => p.id === _focusPersonId);
+            showFocusBanner(person ? person.name : "");
+        }
         refresh();
     };
 
@@ -93,6 +101,7 @@ window.onload = async () => {
     setupDarkMode();
     setupLangSwitcher();
     setupFileManager();
+    setupFocusBanner();
 };
 
 // ─── 解析 URL hash 分享数据 ────────────────────────────────────────
@@ -165,10 +174,13 @@ function setupUndoRedo() {
 }
 
 function _renderView(svg) {
+    const dataToRender = (_focusMode && _focusPersonId)
+        ? buildFocusData(familyData, _focusPersonId)
+        : familyData;
     if (_viewMode === "timeline") {
-        renderTimeline(familyData, svg, id => selectPerson(id));
+        renderTimeline(dataToRender, svg, id => selectPerson(id));
     } else {
-        renderTree(familyData, svg, id => selectPerson(id));
+        renderTree(dataToRender, svg, id => selectPerson(id));
     }
 }
 
@@ -236,6 +248,9 @@ function switchToFile(id) {
     _undoStack.length = 0;
     _redoStack.length = 0;
     _syncUndoRedoBtns();
+    _focusMode = false;
+    _focusPersonId = null;
+    hideFocusBanner();
     updateFileNameDisplay();
     _didInitialFit = false;
     refresh();
@@ -393,6 +408,10 @@ function setupKeyboard() {
                 const next = _viewMode === "tree" ? "timeline" : "tree";
                 window._switchView && window._switchView(next);
             }
+            if (e.key === "g" || e.key === "G") {
+                if (_focusMode) window.exitFocusMode();
+                else if (_focusPersonId) window.enterFocusMode(_focusPersonId);
+            }
         }
     });
 }
@@ -503,4 +522,132 @@ function applyTransform() {
     const svg = document.getElementById("tree-area");
     svg.style.transform = `translate(${svgPanOffset.x}px, ${svgPanOffset.y}px) scale(${svgScale})`;
     svg.style.transformOrigin = "center center";
+}
+
+// ─── 聚焦模式：仅渲染直系亲属子树 ────────────────────────────────────────
+function buildFocusData(data, personId) {
+    const related = new Set([personId]);
+
+    // Parents of focal person
+    const focalParents = data.relationships
+        .filter(r => r.child === personId)
+        .map(r => r.parent);
+    focalParents.forEach(id => related.add(id));
+
+    // Siblings (share at least one parent)
+    focalParents.forEach(parentId => {
+        data.relationships
+            .filter(r => r.parent === parentId)
+            .forEach(r => related.add(r.child));
+    });
+
+    // Children
+    data.relationships
+        .filter(r => r.parent === personId)
+        .forEach(r => related.add(r.child));
+
+    // Spouses of focal person
+    data.marriages.forEach(m => {
+        if (m.spouse1 === personId) related.add(m.spouse2);
+        if (m.spouse2 === personId) related.add(m.spouse1);
+    });
+
+    // Spouses of parents (so couple node clusters render correctly)
+    focalParents.forEach(parentId => {
+        data.marriages.forEach(m => {
+            if (m.spouse1 === parentId) related.add(m.spouse2);
+            if (m.spouse2 === parentId) related.add(m.spouse1);
+        });
+    });
+
+    // Spouses of children (so child couples render correctly)
+    const childIds = data.relationships
+        .filter(r => r.parent === personId)
+        .map(r => r.child);
+    childIds.forEach(childId => {
+        data.marriages.forEach(m => {
+            if (m.spouse1 === childId) related.add(m.spouse2);
+            if (m.spouse2 === childId) related.add(m.spouse1);
+        });
+    });
+
+    return {
+        persons:       data.persons.filter(p => related.has(p.id)),
+        relationships: data.relationships.filter(r => related.has(r.parent) && related.has(r.child)),
+        marriages:     data.marriages.filter(m => related.has(m.spouse1) && related.has(m.spouse2))
+    };
+}
+
+function showFocusBanner(name) {
+    const banner = document.getElementById("focus-banner");
+    const text   = document.getElementById("focus-banner-text");
+    if (banner) banner.style.display = "flex";
+    if (text)   text.textContent = t("focus-banner").replace("{name}", name);
+    // Re-apply i18n for the label inside the banner
+    const lbl = document.getElementById("focus-mode-label");
+    if (lbl) lbl.textContent = t("focus-mode-label");
+    const exitBtn = document.getElementById("focus-exit-btn");
+    if (exitBtn) exitBtn.textContent = t("focus-exit-btn");
+}
+
+function hideFocusBanner() {
+    const banner = document.getElementById("focus-banner");
+    if (banner) banner.style.display = "none";
+}
+
+window.isFocusActive = id => _focusMode && _focusPersonId === id;
+
+window.enterFocusMode = function(id) {
+    _focusMode     = true;
+    _focusPersonId = id;
+    const person = familyData.persons.find(p => p.id === id);
+    showFocusBanner(person ? person.name : "");
+    _didInitialFit = false;
+    refreshTreeOnly();
+    requestAnimationFrame(() => { autoFitTree(); _didInitialFit = true; });
+    if (person) showToast && showToast(`🎯 ${t("focus-mode-label")}: ${person.name}`);
+};
+
+window.exitFocusMode = function() {
+    _focusMode     = false;
+    _focusPersonId = null;
+    hideFocusBanner();
+    _didInitialFit = false;
+    refreshTreeOnly();
+    requestAnimationFrame(() => { autoFitTree(); _didInitialFit = true; });
+};
+
+window.toggleFocusMode = function(id) {
+    if (_focusMode && _focusPersonId === id) {
+        window.exitFocusMode();
+    } else {
+        window.enterFocusMode(id);
+    }
+};
+
+// ─── 右键菜单回调 ──────────────────────────────────────────────────────────
+window._onContextMenuAction = function(action, personId) {
+    switch (action) {
+        case "edit":
+            selectPerson(personId);
+            window.showEditPersonModal && window.showEditPersonModal(personId);
+            break;
+        case "delete":
+            selectPerson(personId);
+            window.confirmDeletePerson && window.confirmDeletePerson(personId);
+            break;
+        case "focus":
+            window.toggleFocusMode(personId);
+            break;
+        case "center":
+            selectPerson(personId);
+            centerOnNode(personId);
+            break;
+    }
+};
+
+// Focus exit button wiring (called after DOM ready in setupExtraButtons)
+function setupFocusBanner() {
+    const btn = document.getElementById("focus-exit-btn");
+    if (btn) btn.addEventListener("click", window.exitFocusMode);
 }
