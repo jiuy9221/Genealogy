@@ -1,0 +1,278 @@
+# Genealogy Daily Development Log
+
+## 2026-05-06 (第二次推进)
+- 更新文件：modules/tree.js、modules/ui.js、modules/i18n.js、style.css
+- 新增功能：
+  - **时间轴事件菱形点击浮层**（tree.js）：
+    - 新增 `_showEventPopup(person, ev, clientX, clientY)` 函数：在点击位置生成固定定位的 `.event-popup` 卡片，展示人员姓名、事件类型标签、年份、描述；自动调整位置避免超出视口；×关闭按钮与点击外部均可关闭；动画淡入缩放效果（150ms）。
+    - 菱形 `cursor` 改为 `pointer`，尺寸从 5px → 6px，悬停时 opacity 加强到 1.0；点击 `stopPropagation` 避免触发 SVG 背景关闭事件。
+    - `renderTree` 和视图切换时自动调用 `_hideEventPopup()` 清理浮层。
+  - **统计面板图表**（ui.js）：
+    - `_buildGenderPie(s)` 函数：生成 SVG 饼图（donut style）；3 段：男/女/未知，颜色 #3b82f6/#ec4899/#94a3b8；内圆显示总人数与"总人数"标签；图例含颜色点、性别名称、数量与百分比；支持「仅一种性别」（360°）的全圆情形。
+    - `_buildGenBar(data)` 函数：内联 BFS 计算各代人数；生成 SVG 水平柱状图，每行对应一个代际层，柱宽按该代人数占最大代人数的比例归一化，最小宽 4px；右侧标注数量；亮/暗主题各自配色。
+    - `showStatsModal` 在原有 6 格统计卡下方插入 `.stats-charts` 区块，并排显示两张图。
+  - **i18n 扩展**：三语各新增 3 个键（`stats-gender-dist`、`stats-gen-dist`、`event-popup-close`，共 9 条翻译）。
+  - **打印样式增强**（style.css）：
+    - `@media print` 区块：隐藏顶栏/左右面板/图例/弹层；中间族谱树区占满全宽；`tree-area` 取消 transform；`@page` 指定 A3 横向打印；`print-color-adjust: exact` 保留填充色。
+- 下一步：
+  - 批量选中节点（框选 / Shift 点击）并导出子树 JSON
+  - 节点备注快速预览（tooltip 悬停显示备注内容）
+  - 更完善的"合并重复人员"工具（按姓名+出生年相似度检测）
+
+## 2026-04-29
+- 更新文件：index.html, style.css, app.js, modules/data.js（新建）, modules/tree.js（新建）, modules/ui.js（新建）, architecture.md, DAILY_LOG.md（新建）
+- 新增功能：
+  - 创建 modules/ 目录，拆分 data.js / tree.js / ui.js 三个模块
+  - data.js：人员 CRUD、亲子/婚姻关系增删、JSON 导出、Markdown 导出/导入解析、localStorage 持久化
+  - tree.js：BFS 代际布局算法、配偶分组水平排列、SVG 渲染（贝塞尔亲子线 + 虚线配偶线）、按性别着色节点
+  - ui.js：左栏人员列表（带性别标签选中高亮）、右侧关系编辑面板、复用模态框（新增/编辑人员）、JSON/MD 导入导出绑定
+  - app.js：重构为模块协调器，SVG 鼠标平移 + 滚轮缩放 + 缩放按钮
+  - index.html：三栏布局完善，加图例、缩放按钮、模态框 DOM
+  - style.css：CSS 变量体系、完整组件样式（按钮/面板/列表/表单/模态框）、响应式布局
+- 下一步：
+  - 搜索人员过滤功能
+  - 族谱树节点点击高亮视觉反馈
+  - 支持导入 family.json 时提示合并/覆盖选项
+  - 移动端适配优化
+
+## 2026-05-01
+- 更新文件：modules/tree.js、modules/ui.js、app.js、index.html、style.css
+- 新增功能：
+  - tree.js：重写连线渲染为**渔骨式（fishbone）**连接——两位父母底部各引竖线接水平 coupling bar，junction 点向下分叉到各子女；单亲则用折线；无子女配偶保留紫色虚线。节点顶部加性别色条（蓝/粉），显示生卒年范围（如 1940–2005），姓名超长省略。代际背景添加交替浅色带。新增 SVG `<filter id="glow">` 高亮效果，`_nodeGroups` 模块级追踪所有 `<g>` 元素，`highlightNode(id)` 正确添加发光滤镜+加粗描边。
+  - app.js：`highlightTreeNode` 正确调用 `highlightNode()`；新增键盘快捷键（ESC 关闭模态框、Ctrl+N 新增人员、Ctrl+E 导出 JSON、+/- 缩放、0 重置视图）；补充触摸屏平移支持。
+  - ui.js：人员列表增加**搜索/过滤**功能（实时关键字匹配 + 高亮 `<mark>` 标注）；列表按姓名字典序排序；显示出生年份；新增**导入合并/覆盖对话框**（按 ID 去重追加或完整覆盖）；新增 **Toast 通知**系统（新增/编辑/删除/导入导出均有提示）；编辑面板显示估算年龄；模态框聚焦第一个输入框；表单拆成两列布局。
+  - index.html：左面板加搜索框；顶栏新增快捷键提示；图例增加键盘提示；引入 toast-container。
+  - style.css：搜索框圆角样式；人员列表 `<mark>` 高亮；Toast 动画；导入对话框卡片样式；模态框 slideUp 动画；表单双列 `.form-row`；图例动态居中修正；按钮 active 缩放反馈；完整变量体系补全。
+- 下一步：
+  - 族谱树节点拖拽重排（可选位置微调）
+  - 多根节点时自动居中并适应视口
+  - 打印/导出为 PNG 或 PDF
+  - 人员头像（初始字母头像或上传图片）
+  - 统计视图（成员数、代际数、平均寿命等）
+
+## 2026-05-02
+- 更新文件：modules/data.js、modules/tree.js、modules/ui.js、app.js、index.html、style.css
+- 新增功能：
+  - **data.js**：新增 `computeStats(data)` — BFS 计算代际层数、平均寿命（带出生+死亡年份者）、子女最多人员、最年长者（按出生年升序）。
+  - **tree.js**：NODE_W 从 130→148px；每个节点左侧增加**首字头像圆**（蓝/粉/灰按性别配色，显示姓名第一个字），名字与生卒年文本整体右移至 x=44，左对齐布局。生卒年格式精简为 `b.YYYY` / `YYYY–YYYY`。
+  - **ui.js**：新增 `showStatsModal()` — 3×2 统计卡片网格（总人数、男/女含百分比、代际层数、婚姻对数、平均寿命），附"子女最多""最年长者"高亮行；新增 `exportTreeAsPNG()` — 序列化当前 SVG 为 Blob，2× 高清 Canvas 渲染后下载 PNG，内嵌背景色，支持出错提示。
+  - **app.js**：新增 `autoFitTree()` — 首次加载时自动计算缩放比（min(containerW/svgW, containerH/svgH) × 0.88）居中适应视口，后续编辑保留用户操作状态；`_didInitialFit` 标志避免重复重置；新增 `setupExtraButtons()` 绑定「统计」「导出 PNG」「适应视口」三个按钮；键盘快捷键 `F` 触发适应视口。
+  - **index.html**：顶栏新增「导出 PNG」「📊 统计」按钮；缩放区新增「适应视口（⇱）」按钮；图例更新快捷键说明。
+  - **style.css**：新增 `.btn-stats`、`.stats-grid`、`.stat-card`（含 `.male`/`.female` 变体）、`.stat-value`、`.stat-pct`、`.stat-label`、`.stats-highlight`、`.stats-hl-label` 全套统计面板样式。
+- 下一步：
+  - 族谱树节点拖拽重排（手动微调位置）
+  - 打印优化（@media print 隐藏面板，仅输出树图）
+  - 人员照片上传（base64 存储到 localStorage）
+  - 族谱分享：生成可分享的 URL hash（内嵌压缩 JSON）
+  - 多语言支持（繁体中文 / English 切换）
+
+## 2026-05-02（第三次推进）
+- 更新文件：modules/tree.js、app.js、index.html、style.css
+- 新增功能：
+  - **暗色主题（Dark Mode）**：
+    - style.css 新增 `body.dark-mode` CSS 变量覆盖块（bg/surface/border/text/primary/danger/male/female 全套），顶栏按钮、列表、编辑器、模态框、Toast、统计卡片、图例均适配深色背景；
+    - tree.js 新增 `getNodeColors(gender)` 函数，节点填充色、描边、头像圆、顶部色条、姓名/生卒年文字颜色随主题切换；`_lineColor()` / `_bandFill()` 辅助函数控制连线与代际背景带；
+    - app.js 新增 `setupDarkMode()`，页面加载前读取 localStorage 提前应用暗色类（避免闪白），点击按钮切换主题并触发 `refreshTreeOnly()` 重绘树；
+    - 键盘快捷键 **D** 触发暗色/亮色切换；顶栏新增「🌙 暗色 / ☀ 亮色」按钮。
+  - **节点拖拽重排**：
+    - tree.js 引入 `_customOffsets`（personId→{dx,dy}）、`_basePositions`（布局算法原始坐标）、`_dragState` 模块级状态；
+    - `initDragHandlers()` 只注册一次全局 `window.mousemove/mouseup`：移动时实时更新节点 `<g>` transform，mouseup 后调用 `_onDragEnd` 回调触发完整重绘（连线随之更新）；
+    - 节点 mousedown 调用 `e.stopPropagation()` 阻止背景平移；`_wasDragging` 标志防止拖拽结束后误触 click；
+    - app.js 在页面加载时通过 `setCustomOffsets(loadDragOffsets())` 恢复偏移，`setDragEndCallback` 注册保存+重绘；`window.getSvgScale` 供 tree.js 换算屏幕像素→SVG 用户坐标；pan 的 `mousemove` 检查 `window._nodeDragActive` 避免冲突；
+    - 顶栏缩放区新增「↻ 重置节点位置」按钮（`btn-reset-drag`），清除所有拖拽偏移并重绘。
+- 下一步：
+  - 时间轴模式（横向时间线，按出生年展示各代成员）
+  - 多语言切换（繁体中文 / English）
+  - 搜索后自动在树中定位并滚动到对应节点
+
+## 2026-05-02（第二次推进）
+- 更新文件：family.json、style.css、modules/tree.js、modules/ui.js、index.html、app.js、architecture.md
+- 新增功能：
+  - **family.json**：扩展为三代七口示例数据（张大树 & 王桂花 → 张三 & 李四 → 张小明/小红/小刚），含出生/死亡年份。
+  - **头像上传**（ui.js + tree.js）：
+    - 新增/编辑人员表单加入「头像照片」上传区，点击圆形预览或按钮触发文件选择器，FileReader 读取为 base64 data URL 存入 person.photo（≤300KB 限制）；
+    - 右侧编辑面板头部改为 `editor-person-meta` 布局，有照片显示 `<img>` 圆形头像，无照片显示性别配色首字母圆；
+    - tree.js 节点渲染：有 `p.photo` 时在 `<defs>` 生成 `clipPath`，节点内用 `<image href>` 圆形裁剪展示照片，无照片保留原首字母圆。
+  - **分享链接**（ui.js + app.js）：
+    - `generateShareLink()` 将族谱数据（照片字段剥离）序列化为 Unicode-safe base64，生成 `#share=...` URL，优先写入剪贴板，不支持时弹出复制对话框；
+    - app.js `tryLoadShareHash()` 在页面加载时检测 hash，自动解析并加载分享数据；
+    - 顶栏新增「🔗 分享」按钮。
+  - **打印优化**（style.css + app.js + index.html）：
+    - `@media print` CSS：隐藏顶栏/左右面板/图例/Toast，body/layout/center-panel 全宽可见，`#tree-area` 清除 transform，`@page landscape` 横向输出；
+    - 顶栏新增「🖨 打印」按钮（调用 `window.print()`），键盘快捷键 `Ctrl+P` 绑定。
+- 下一步：
+  - 族谱树节点拖拽重排（鼠标拖动节点到自定义位置）
+  - 多语言支持（繁体中文 / English 切换）
+  - 时间轴模式（横向展示各代际生卒时间线）
+  - 暗色主题（Dark Mode）切换
+
+## 2026-05-03
+- 更新文件：modules/tree.js、app.js、index.html、style.css、architecture.md、requirements.md
+- 新增功能：
+  - **时间轴视图（Timeline View）**（tree.js + app.js + index.html + style.css）：
+    - 顶栏新增「🌳 族谱树 / 📅 时间轴」分段按钮组，点击或按 `T` 键切换视图；
+    - `renderTimeline(data, svgEl_el, onNodeClick)`：以出生年为 X 轴（10px/年，范围自动由数据推算）、代际层数为 Y 轴绘制各人员节点；
+    - 代际背景条（偶数代加色带）+ 每10年一条刻度线 + 世纪线加粗；
+    - 今年位置用红色虚线 + "今" 标记；
+    - 无出生年人员排列在最右侧；同代同年节点自动碰撞推移避免重叠；
+    - 复用 `renderConnections` 绘制亲子/配偶连线；
+    - 时间轴模式不启用节点拖拽（`btn-reset-drag` 自动隐藏）。
+  - **节点选中自动居中**（app.js + tree.js）：
+    - `getNodeCenter(id)` 计算节点真实中心（树模式考虑 customOffset，时间轴模式直接用布局坐标）；
+    - `centerOnNode(id)` 根据中心坐标更新 `svgPanOffset`，使选中节点在视口居中；
+    - 左侧人员列表点击、搜索选中后，树/时间轴视图自动平移对焦。
+  - **代码重构**（tree.js）：
+    - 提取 `_renderNodeGroup(p, pos, onNodeClick, enableDrag)` 公共函数，`renderTree` 和 `renderTimeline` 均调用，消除重复节点渲染代码（减少约60行重复代码）；
+    - 新增 `_currentViewMode` 模块变量，`getNodeCenter` 按当前视图模式决定是否叠加拖拽偏移。
+- 下一步：
+  - 多语言切换（繁体中文 / English）
+  - 祖先路径显示（右侧面板显示从选中人员到根节点的路径）
+  - 触摸设备双指缩放（pinch-to-zoom）
+  - 搜索支持拼音首字母模糊匹配
+
+## 2026-05-03（第二次推进）
+- 更新文件：modules/i18n.js（新建）、index.html、modules/data.js、modules/ui.js、app.js、style.css、architecture.md、requirements.md
+- 新增功能：
+  - **多语言支持（i18n）**：
+    - 新建 `modules/i18n.js`：包含 `zh-CN`（简体）/ `zh-TW`（繁体）/ `en`（英文）三套完整翻译表（100+ 键值），`t(key)` 全局函数按当前语言取值并回退到 zh-CN；
+    - `setLang(code)` 切换语言并持久化到 `genealogy_lang`；`loadLang()` 在页面加载时预读避免闪烁；`applyI18n()` 遍历 `[data-i18n]` / `[data-i18n-title]` 元素自动更新文本与 title；
+    - 顶栏新增 `<select id="lang-select">` 样式化原生下拉选择器（带自定义 SVG 箭头，亮/暗主题双套）；
+    - `window._onLangChange` 回调：语言切换后自动触发 `applyI18n()` + `syncDarkBtn()` + `refresh()` 全量重渲；
+    - `i18n.js` 在所有模块前加载（HTML script 顺序最先），保证全局 `t()` 在任意 JS 中可用；
+    - `modules/ui.js` 全面接入 `t()` 替换硬编码字符串（按钮标签、section 标题、Toast 消息、模态标题、表单标签、导入对话框等）；`app.js` 同步接入（Toast、暗色按钮标签等）。
+  - **祖先路径显示**：
+    - `modules/data.js` 新增 `getAncestorPath(data, personId)`：DFS 向上遍历亲子关系，找从最高祖先到目标人员的最长路径，返回 person 对象数组；
+    - `modules/ui.js` `renderPersonEditor` 新增 `.ancestor-path-section` 区段：面包屑式祖先路径，每个祖先为 `.anc-item` 标签，可点击调用 `selectPerson(id)` 跳转；当前人员标注 `.anc-current`（蓝底白字）；仅两节点及以上才渲染；
+    - `style.css` 新增 `.ancestor-path`、`.anc-item`、`.anc-arrow`、`.anc-current` 全套样式（含深色主题适配）。
+  - **触摸双指捏合缩放（pinch-to-zoom）**：
+    - `app.js` `setupTreePan()` 重构触摸逻辑：`touchstart` 检测双指时记录初始距离 `pinchDist` 和 `pinchScaleStart`；`touchmove` 双指时 `e.preventDefault()`（`passive:false`）阻止浏览器原生缩放，按距离比例更新 `svgScale`；单指保持原平移逻辑；`touchend` 清理两套状态互不干扰；缩放范围限 [0.2, 3]。
+- 下一步：
+  - 搜索支持拼音首字母模糊匹配
+  - 人员详情页显示完整生卒/年龄统计
+  - 导出 PDF（jsPDF 离线库）
+  - 多族谱文件管理（本地多份族谱切换）
+
+## 2026-05-04
+- 更新文件：modules/data.js、app.js、modules/i18n.js、index.html、modules/ui.js、style.css、modules/tree.js
+- 新增功能：
+  - **多族谱文件管理**（data.js + app.js + index.html + i18n.js + style.css）：
+    - `modules/data.js` 新增 `createGenealogyFile(name, data)`、`loadGenealogyById(id)`、`saveGenealogyById(id, data)`、`deleteGenealogyById(id)`、`renameGenealogyFile(id, name)`、`migrateFromLegacy()` 等七个多文件管理函数；数据以 `genealogy_data_<id>` 为 key 存入 localStorage，文件列表用 `genealogy_file_list`，当前活动文件用 `genealogy_active_id`；
+    - 首次打开时自动迁移旧版 `genealogy_familyData` 单键数据至新系统（无缝向下兼容）；
+    - `app.js` 新增 `currentFileId` 状态、`updateFileNameDisplay()`、`switchToFile(id)` 函数；启动流程全面接入多文件逻辑（迁移 → 读取活动文件 → 渲染）；`onDataChange` 调用 `saveGenealogyById` 替代旧 `saveToLocal`；
+    - 顶栏左侧新增当前族谱文件名显示区（`#current-file-name`，灰色细字，超出截断）；
+    - 工具栏新增绿色「📁 文件」按钮（`#btn-file-manager`），点击弹出文件管理对话框；
+    - 文件管理对话框（自定义 overlay，带淡入滑动动画）：列出所有已保存族谱文件，当前激活项标蓝色「当前」徽章；支持 **切换**（即时重渲）、**重命名**（prompt 输入）、**删除**（至少保留一个，确认对话框）、**新建**（prompt 命名 + 立即切换）；ESC 键关闭；事件委托刷新列表无需重建整个 DOM；
+    - 三套语言（zh-CN / zh-TW / en）均补充完整文件管理翻译键（22 个新键）。
+  - **族谱树代际标签**（tree.js）：
+    - `renderTree` 的代际背景带循环中同时渲染左侧代际文字标签（「第1代」…「第N代」），与时间轴视图保持一致；标签位置自动跟随 viewBox minX，深/浅主题各用不同灰度色；`pointer-events:none` 避免干扰拖拽。
+  - **出生/逝世年份弹性输入**（ui.js + i18n.js）：
+    - 新增/编辑人员表单将出生日期和逝世日期字段从 `type="date"` 改为 `type="text"`，支持用户输入纯年份（如 `1920`）或完整日期（如 `1920-01-15`）；三语 placeholder 提示示例格式；存储格式保持原样（`p.birth.slice(0,4)` 显示逻辑不变）。
+- 下一步：
+  - 导出 PDF（通过浏览器打印 @media print 美化或 SVG 序列化下载）
+  - 搜索支持拼音首字母模糊匹配
+  - 人员关系图（从某人出发显示其直系亲属子树）
+  - 多设备同步提示（提示用户定期导出 JSON 作为备份）
+
+## 2026-05-04 (Session 2)
+- 更新文件：modules/data.js、modules/ui.js、app.js、index.html、modules/i18n.js、style.css
+- 新增功能：
+  - **拼音首字母搜索**（data.js + ui.js）：
+    - `modules/data.js` 新增 `_PINYIN` 常量（收录 260+ 个常用中文汉字→拼音首字母映射，覆盖百家姓全集 + 常见名字字）；`getPinyinInitials(name)` 将姓名逐字转为首字母串；
+    - `modules/ui.js` 搜索过滤器升级：先检查直接字符匹配，再回退到 `getPinyinInitials` 拼音首字母匹配（`includes`）；例如输入 "ls" 可找到李四、林森，输入 "zh" 可找到张红，输入 "wl" 可找到王林；
+  - **撤销/重做系统**（app.js + index.html + i18n.js + style.css）：
+    - `app.js` 新增 `_undoStack[]`、`_redoStack[]`（最多保留 30 步）、`_changeCount` 计数器；
+    - `onDataChange` 回调在更新前自动 push 当前快照到 `_undoStack`，新操作时清空 `_redoStack`；
+    - `performUndo()` / `performRedo()` 实现双向历史跳转，跳转后自动保存并刷新树视图；
+    - 键盘快捷键：`Ctrl+Z` 撤销、`Ctrl+Y` / `Ctrl+Shift+Z` 重做；当焦点在输入框内时不拦截，避免干扰文字编辑；
+    - `setupUndoRedo()` 绑定工具栏 ↩/↪ 按钮，`_syncUndoRedoBtns()` 根据历史栈长度同步按钮 `disabled` 状态；
+    - 切换族谱文件（`switchToFile`）时自动清空两栈，防止跨文件混乱；
+    - index.html 工具栏「新增人员」右侧新增 ↩ 撤销 / ↪ 重做两个按钮；
+    - style.css `.btn-undo-redo` 专项样式：禁用态半透明、悬停高亮蓝色、暗色主题适配；
+  - **备份提醒**（app.js + i18n.js）：每编辑满 25 次，自动弹出 Toast「💾 已编辑多次，建议导出 JSON 备份数据」（5 秒显示）；三语均有对应翻译；
+  - **打印优化**（style.css + index.html）：
+    - index.html 新增 `#print-title-bar`（含 `#print-title-text` + `#print-subtitle`），普通模式隐藏，打印时显示族谱名称与副标题；
+    - `updateFileNameDisplay()` 同步更新 `#print-title-text` 内容；
+    - `@media print` 大幅强化：隐藏顶栏/侧面板/图例/Toast/文件管理弹窗；打印标题栏样式（22pt 大字 + 分隔线）；强制 `print-color-adjust: exact` 保留背景色；SVG 取消 transform 按原始尺寸输出；`@page` 横向 A4 + 12mm 边距；
+  - **7 个新 i18n 键**（三语 × 7 = 21 条）：`btn-undo-title`、`btn-redo-title`、`toast-undo`、`toast-redo`、`toast-no-undo`、`toast-no-redo`、`toast-backup-remind`
+- 下一步：
+  - 聚焦模式：从某人出发仅渲染其直系亲属子树（父母/兄弟/配偶/子女）
+  - 导出 PDF（@media print 已完善，考虑添加 jsPDF 离线方案）
+  - 搜索结果计数显示（"找到 N 位"）
+  - 节点右键菜单（快速添加关系）
+
+## 2026-05-05
+- 更新文件：modules/tree.js、modules/ui.js、modules/i18n.js、app.js、index.html、style.css
+- 新增功能：
+  - **聚焦模式（Focus Mode）**（app.js + index.html + style.css + ui.js）：
+    - `buildFocusData(data, personId)` — 计算直系亲属子集：目标人员 + 父母 + 兄弟姐妹（共父母）+ 子女 + 配偶 + 父母配偶 + 子女配偶，保留所有相关亲子/婚姻关系；
+    - `_renderView` 在聚焦模式下将过滤数据传入 `renderTree` / `renderTimeline`，全量数据仍用于左侧人员列表和右侧编辑器；
+    - 顶栏与布局之间新增蓝紫渐变**聚焦横幅**（`#focus-banner`）：显示"聚焦模式"标签 + 人员姓名 + 「退出聚焦」按钮；进入/退出时触发 `autoFitTree()` 重新适应视口；
+    - 右侧编辑器 `.editor-actions` 新增 🎯 按钮（`btn-focus`），激活时高亮蓝色；`window.isFocusActive(id)` 供按钮动态着色；
+    - `window.enterFocusMode(id)` / `window.exitFocusMode()` / `window.toggleFocusMode(id)` 三个全局接口；
+    - 键盘快捷键 **G** 切换当前聚焦状态；切换族谱文件时自动退出聚焦；语言切换后横幅文字自动同步；
+    - style.css：聚焦横幅动画 `focus-banner-in`、`.focus-mode-label` 蓝色胶囊标签、`.btn-focus` 紫色按钮、完整暗色主题适配。
+  - **右键快捷菜单（Context Menu）**（tree.js + style.css）：
+    - `_showContextMenu(personId, clientX, clientY)` — 在点击坐标处生成浮动菜单，自动检测越界并调整位置；
+    - 菜单项：✏️ 编辑此人、🗑️ 删除此人（danger 红色）、🎯 聚焦此人（动态切换为「退出聚焦」）、📍 居中查看；
+    - `_renderNodeGroup` 统一注册 `contextmenu` 事件（树模式和时间轴模式均支持），`e.preventDefault()` 阻止浏览器原生菜单；
+    - 点击菜单项后通过 `window._onContextMenuAction(action, personId)` 分发到 app.js 执行；点击菜单外或 ESC 自动关闭；
+    - style.css：`.ctx-menu` 圆角卡片 + pop 缩放动画、`.ctx-item` 悬停蓝色、`.ctx-item.danger` 红色高亮、`.ctx-divider` 分割线；完整暗色主题适配。
+  - **搜索结果计数（Search Count）**（ui.js + index.html + style.css）：
+    - 搜索框下方新增 `#search-count` 元素；搜索时显示「找到 F / N 人」，无搜索词时隐藏；
+    - 三语翻译：`search-count-all` / `search-count-filtered`（含 `{f}` / `{n}` 占位符）；
+    - style.css `.search-count` 细灰体居中显示，暗色主题适配。
+  - **i18n 扩展**：三语各新增 11 个键（focus-btn、focus-exit-btn、focus-banner、focus-mode-label、ctx-*×5、search-count-*×2）；图例快捷键提示更新，加入「G 聚焦」「右键节点菜单」说明。
+- 下一步：
+  - 导出 PDF（通过 @media print 或 jsPDF 离线库）
+  - 人员关系图（从某人出发的直系亲属可视化子图）
+  - 族谱树节点批注/事件（婚姻年份、迁徙记录等）
+  - 移动端优化（触摸长按代替右键菜单）
+
+## 2026-05-05 (第二次推进)
+- 更新文件：modules/data.js、modules/ui.js、modules/tree.js、modules/i18n.js、style.css
+- 新增功能：
+  - **生平事件系统（Life Events）**（data.js + ui.js + i18n.js + style.css）：
+    - `data.js` `addPerson` 默认携带 `events: []` 字段；新增 `addLifeEvent(data, personId, ev)` — 向指定人员追加 `{id, year, type, desc}` 事件记录；新增 `removeLifeEvent(data, personId, eventId)` — 按 ID 删除单条事件；`exportMarkdown` 扩展输出「生平事件」子列表；
+    - `ui.js` 新增 `_buildEventsSection(p, id)` 函数，在编辑面板人员信息下方渲染完整生平事件区块：按年份升序排列的事件列表（年份 + 彩色类型标签 + 描述 + × 删除按钮）+ 行内「年份 / 类型 / 描述 / 添加」快捷录入行；新增 `window.doAddEvent` / `window.doRemoveEvent` 操作函数，修改后触发 `_onDataChange` + `renderPersonEditor` 刷新；
+    - 事件类型七种：出生、去世、婚姻、迁居、学历、工作、其他，各有独立配色（蓝/红/粉/绿/黄/紫/灰），深色主题均完整适配；
+    - `style.css` 新增 `.events-list`、`.event-item`、`.event-year`、`.event-type-tag`、`.ev-{type}` × 7、`.event-desc`、`.event-add-row`、`.ev-year-input`、`.ev-type-select`、`.ev-desc-input` 共 25 条样式规则；
+    - `i18n.js` 三语各新增 16 个键（事件类型标签 × 7 + 占位符/按钮/Toast × 6 + 长按提示 × 1 = 共 48 条翻译）。
+  - **移动端长按菜单**（tree.js）：
+    - `_renderNodeGroup` 节点元素上注册 `touchstart` / `touchend` / `touchmove` / `touchcancel` 四个事件；`touchstart` 开始 600ms 计时器，若未中断则调用 `_showContextMenu` 在触摸坐标弹出右键菜单；任何手势移动或抬起均 `clearTimeout` 取消，避免误触发；`passive: true` 保证不影响滚动性能。
+  - **搜索框键盘导航**（ui.js）：
+    - 搜索框 `keydown` 监听器：↑/↓ 方向键在过滤后的人员列表中上下移动选中（循环回绕），`Enter` 键触发当前高亮项 `click()`；`scrollIntoView({ block: "nearest" })` 确保选中项可见；切换选中同时调用 `selectPerson` + `highlightTreeNode`，与列表点击行为完全一致。
+  - **HTML 转义安全性加固**（ui.js）：
+    - 提取模块级 `_escHtml(s)` 函数；`renderPersonEditor` 内父母/子女/配偶/事件描述、`buildPersonForm` 内备注文本全部经过 HTML 转义，防止姓名/备注中含特殊字符时 XSS 渲染错误。
+- 下一步：
+  - 导出 PDF（jsPDF 离线库或 @media print 强化版）
+  - 节点上方显示事件计数徽章（如 "3 events"）
+  - 生平事件时间轴视图联动（事件气泡在时间轴节点附近标注）
+  - 人员卡片迷你关系图（右侧面板内嵌 SVG 显示直系亲属结构）
+
+## 2026-05-06
+- 更新文件：modules/tree.js、modules/ui.js、modules/i18n.js、style.css
+- 新增功能：
+  - **事件计数徽章（Event Badge）**（tree.js）：
+    - `_renderNodeGroup` 尾部新增逻辑：若人员拥有生平事件（`p.events.length > 0`），在节点右上角绘制琥珀色圆形徽章，显示事件数量（超过 9 条显示 "9+"）；`pointer-events: none` 确保徽章不干扰点击与拖拽；亮/暗主题各自配色；
+    - 族谱树视图与时间轴视图均生效。
+  - **时间轴事件菱形标记（Timeline Event Diamonds）**（tree.js）：
+    - `renderTimeline` 新增 `gEvents` 图层，位于节点层之上；
+    - 对每位有生平事件且事件含年份的人员，在对应的年份横坐标位置绘制小菱形（`M/L` path）；Y 轴位于节点下方 10px；
+    - 颜色与事件类型对应（出生蓝/去世红/婚姻粉/迁居绿/学历黄/工作紫/其他灰），与编辑面板的类型标签一致；
+    - 每个菱形带 SVG `<title>` tooltip，内容为「姓名 · 年份 · [类型] 描述」，鼠标悬停即可查看；
+    - 超出年份范围（minYear ~ maxYear）的事件自动跳过。
+  - **迷你关系图（Mini Relationship Map）**（ui.js + style.css）：
+    - `_buildMiniRelGraph(data, focusId)` 函数：生成内嵌 SVG 小图谱，展示当前人员与其直系亲属（父母/配偶/子女）的空间关系；
+    - 布局三行：父母行（上）→ 本人 + 配偶行（中）→ 子女行（下）；无某类关系则折叠对应行；
+    - 连线样式：亲子用实线（`mg-line`）、配偶用紫色虚线（`mg-line-spouse`）；多父母 / 多子女使用鱼骨式汇聚；
+    - 本人节点加粗描边高亮（`mg-focal-rect`），非本人节点可点击跳转（`onclick="selectPerson(id)"`），悬停降低不透明度；
+    - 节点颜色系统（男/女/未知 × 亮色/暗色 = 6 种配色）通过 CSS 类完全控制，暗色主题自动切换，不依赖 JS 内联颜色；
+    - 渲染在「生平事件」区块下方；无直系亲属关系时显示占位文字；
+    - CSS 新增 25 条规则（`.mini-graph-section`、`.mini-graph-wrap`、`.mini-graph-svg`、`.mg-line*`、`.mg-rect`、`.mg-male/female/other`、`.mg-focal-*`、`.mg-name/year`、暗色覆盖 × 9）。
+  - **Bug 修复**（ui.js）：`buildPersonForm` 中 `escHtml(initChar)` 调用未定义函数，修复为 `window.escHtml = _escHtml` 导出，避免添加人员时头像预览 ReferenceError。
+  - **i18n 扩展**：三语各新增 2 个键（`mini-graph-title`、`mini-graph-no-rels`，共 6 条翻译）。
+- 下一步：
+  - 导出 PDF（jsPDF 离线库或 @media print 进一步增强）
+  - 时间轴事件菱形点击展开事件详情浮层
+  - 统计图表（性别分布饼图、代际柱状图）嵌入统计面板
+  - 批量选中多个节点进行批量操作（移动/导出子树）

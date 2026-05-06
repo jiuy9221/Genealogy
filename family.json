@@ -1,12 +1,31 @@
 {
   "persons": [
     {
+      "id": "p0a",
+      "name": "张大树",
+      "gender": "male",
+      "birth": "1920-05-10",
+      "death": "1995-11-03",
+      "notes": "家族创始人，务农为生",
+      "photo": ""
+    },
+    {
+      "id": "p0b",
+      "name": "王桂花",
+      "gender": "female",
+      "birth": "1922-08-15",
+      "death": "1998-02-20",
+      "notes": "",
+      "photo": ""
+    },
+    {
       "id": "p1",
       "name": "张三",
       "gender": "male",
       "birth": "1950-01-01",
       "death": "",
-      "notes": "家族第一代"
+      "notes": "家族第二代长子",
+      "photo": ""
     },
     {
       "id": "p2",
@@ -14,7 +33,8 @@
       "gender": "female",
       "birth": "1952-02-02",
       "death": "",
-      "notes": ""
+      "notes": "",
+      "photo": ""
     },
     {
       "id": "p3",
@@ -22,14 +42,40 @@
       "gender": "male",
       "birth": "1975-03-03",
       "death": "",
-      "notes": ""
+      "notes": "",
+      "photo": ""
+    },
+    {
+      "id": "p4",
+      "name": "张小红",
+      "gender": "female",
+      "birth": "1978-06-12",
+      "death": "",
+      "notes": "",
+      "photo": ""
+    },
+    {
+      "id": "p5",
+      "name": "张小刚",
+      "gender": "male",
+      "birth": "1980-09-15",
+      "death": "",
+      "notes": "",
+      "photo": ""
     }
   ],
   "relationships": [
-    { "parent": "p1", "child": "p3" },
-    { "parent": "p2", "child": "p3" }
+    { "parent": "p0a", "child": "p1" },
+    { "parent": "p0b", "child": "p1" },
+    { "parent": "p1",  "child": "p3" },
+    { "parent": "p2",  "child": "p3" },
+    { "parent": "p1",  "child": "p4" },
+    { "parent": "p2",  "child": "p4" },
+    { "parent": "p1",  "child": "p5" },
+    { "parent": "p2",  "child": "p5" }
   ],
   "marriages": [
-    { "spouse1": "p1", "spouse2": "p2" }
+    { "spouse1": "p0a", "spouse2": "p0b" },
+    { "spouse1": "p1",  "spouse2": "p2" }
   ]
 }
