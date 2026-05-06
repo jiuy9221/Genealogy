@@ -176,7 +176,9 @@ const TRANSLATIONS = {
         "ev-add-btn": "添加",
         "toast-event-added": "已添加生平事件",
         "toast-event-removed": "已删除生平事件",
-        "longpress-hint": "长按节点显示菜单（移动端）"
+        "longpress-hint": "长按节点显示菜单（移动端）",
+        "mini-graph-title": "亲属关系图",
+        "mini-graph-no-rels": "暂无直系亲属关系"
     },
     "zh-TW": {
         "app-title": "族譜",
@@ -351,7 +353,9 @@ const TRANSLATIONS = {
         "ev-add-btn": "添加",
         "toast-event-added": "已添加生平事件",
         "toast-event-removed": "已刪除生平事件",
-        "longpress-hint": "長按節點顯示選單（行動裝置）"
+        "longpress-hint": "長按節點顯示選單（行動裝置）",
+        "mini-graph-title": "親屬關係圖",
+        "mini-graph-no-rels": "暫無直系親屬關係"
     },
     "en": {
         "app-title": "Family Tree",
@@ -526,7 +530,9 @@ const TRANSLATIONS = {
         "ev-add-btn": "Add",
         "toast-event-added": "Life event added",
         "toast-event-removed": "Life event removed",
-        "longpress-hint": "Long-press node for menu (mobile)"
+        "longpress-hint": "Long-press node for menu (mobile)",
+        "mini-graph-title": "Relationship Map",
+        "mini-graph-no-rels": "No direct relationships"
     }
 };
 

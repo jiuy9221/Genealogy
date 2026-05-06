@@ -229,3 +229,31 @@
   - 节点上方显示事件计数徽章（如 "3 events"）
   - 生平事件时间轴视图联动（事件气泡在时间轴节点附近标注）
   - 人员卡片迷你关系图（右侧面板内嵌 SVG 显示直系亲属结构）
+
+## 2026-05-06
+- 更新文件：modules/tree.js、modules/ui.js、modules/i18n.js、style.css
+- 新增功能：
+  - **事件计数徽章（Event Badge）**（tree.js）：
+    - `_renderNodeGroup` 尾部新增逻辑：若人员拥有生平事件（`p.events.length > 0`），在节点右上角绘制琥珀色圆形徽章，显示事件数量（超过 9 条显示 "9+"）；`pointer-events: none` 确保徽章不干扰点击与拖拽；亮/暗主题各自配色；
+    - 族谱树视图与时间轴视图均生效。
+  - **时间轴事件菱形标记（Timeline Event Diamonds）**（tree.js）：
+    - `renderTimeline` 新增 `gEvents` 图层，位于节点层之上；
+    - 对每位有生平事件且事件含年份的人员，在对应的年份横坐标位置绘制小菱形（`M/L` path）；Y 轴位于节点下方 10px；
+    - 颜色与事件类型对应（出生蓝/去世红/婚姻粉/迁居绿/学历黄/工作紫/其他灰），与编辑面板的类型标签一致；
+    - 每个菱形带 SVG `<title>` tooltip，内容为「姓名 · 年份 · [类型] 描述」，鼠标悬停即可查看；
+    - 超出年份范围（minYear ~ maxYear）的事件自动跳过。
+  - **迷你关系图（Mini Relationship Map）**（ui.js + style.css）：
+    - `_buildMiniRelGraph(data, focusId)` 函数：生成内嵌 SVG 小图谱，展示当前人员与其直系亲属（父母/配偶/子女）的空间关系；
+    - 布局三行：父母行（上）→ 本人 + 配偶行（中）→ 子女行（下）；无某类关系则折叠对应行；
+    - 连线样式：亲子用实线（`mg-line`）、配偶用紫色虚线（`mg-line-spouse`）；多父母 / 多子女使用鱼骨式汇聚；
+    - 本人节点加粗描边高亮（`mg-focal-rect`），非本人节点可点击跳转（`onclick="selectPerson(id)"`），悬停降低不透明度；
+    - 节点颜色系统（男/女/未知 × 亮色/暗色 = 6 种配色）通过 CSS 类完全控制，暗色主题自动切换，不依赖 JS 内联颜色；
+    - 渲染在「生平事件」区块下方；无直系亲属关系时显示占位文字；
+    - CSS 新增 25 条规则（`.mini-graph-section`、`.mini-graph-wrap`、`.mini-graph-svg`、`.mg-line*`、`.mg-rect`、`.mg-male/female/other`、`.mg-focal-*`、`.mg-name/year`、暗色覆盖 × 9）。
+  - **Bug 修复**（ui.js）：`buildPersonForm` 中 `escHtml(initChar)` 调用未定义函数，修复为 `window.escHtml = _escHtml` 导出，避免添加人员时头像预览 ReferenceError。
+  - **i18n 扩展**：三语各新增 2 个键（`mini-graph-title`、`mini-graph-no-rels`，共 6 条翻译）。
+- 下一步：
+  - 导出 PDF（jsPDF 离线库或 @media print 进一步增强）
+  - 时间轴事件菱形点击展开事件详情浮层
+  - 统计图表（性别分布饼图、代际柱状图）嵌入统计面板
+  - 批量选中多个节点进行批量操作（移动/导出子树）

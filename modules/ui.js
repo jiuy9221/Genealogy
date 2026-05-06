@@ -8,6 +8,8 @@ let _searchQuery = "";
 function _escHtml(s) {
     return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
+// Fix: expose for legacy inline usage in buildPersonForm
+window.escHtml = _escHtml;
 
 // ─── 初始化 ────────────────────────────────────────────────────────────
 function init(data, onDataChange) {
@@ -321,6 +323,8 @@ ${pathHtml}
 </div>
 
 ${_buildEventsSection(p, id)}
+
+${_buildMiniRelGraph(_data, id)}
 `;
 }
 
@@ -734,6 +738,178 @@ function exportTreeAsPNG() {
     };
     img.onerror = () => { URL.revokeObjectURL(url); showToast(t("toast-png-fail")); };
     img.src = url;
+}
+
+// ─── 迷你关系图（人员卡片内嵌 SVG）──────────────────────────────────────────
+const MN_W = 76, MN_H = 28, MN_HG = 10, MN_VG = 40, MN_PAD = 14;
+
+function _miniGenderClass(gender) {
+    if (gender === "male")   return "mg-male";
+    if (gender === "female") return "mg-female";
+    return "mg-other";
+}
+function _miniBarColor(gender) {
+    if (gender === "male")   return "#3b82f6";
+    if (gender === "female") return "#ec4899";
+    return "#94a3b8";
+}
+
+function _buildMiniRelGraph(data, focusId) {
+    const focal = data.persons.find(x => x.id === focusId);
+    if (!focal) return "";
+
+    const parents = data.relationships
+        .filter(r => r.child === focusId)
+        .map(r => data.persons.find(x => x.id === r.parent))
+        .filter(Boolean);
+
+    const spouses = data.marriages
+        .filter(m => m.spouse1 === focusId || m.spouse2 === focusId)
+        .map(m => data.persons.find(x => x.id === (m.spouse1 === focusId ? m.spouse2 : m.spouse1)))
+        .filter(Boolean);
+
+    const children = data.relationships
+        .filter(r => r.parent === focusId)
+        .map(r => data.persons.find(x => x.id === r.child))
+        .filter(Boolean);
+
+    if (!parents.length && !spouses.length && !children.length) {
+        return `<div class="editor-section mini-graph-section">
+  <h5>${t("mini-graph-title")}</h5>
+  <p class="mini-graph-empty">${t("mini-graph-no-rels")}</p>
+</div>`;
+    }
+
+    // Rows: row-0 = parents (if any), row-1 = focal+spouses, row-2 = children (if any)
+    const hasParents  = parents.length  > 0;
+    const hasChildren = children.length > 0;
+    const focalRow    = hasParents ? 1 : 0;
+    const rows = [];
+    if (hasParents)  rows.push({ row: 0,          persons: parents });
+    rows.push(                  { row: focalRow,   persons: [focal, ...spouses] });
+    if (hasChildren) rows.push( { row: focalRow + 1, persons: children });
+
+    const maxCols = Math.max(...rows.map(r => r.persons.length));
+    const numRows = focalRow + 1 + (hasChildren ? 1 : 0);
+    const svgW    = Math.max(210, maxCols * (MN_W + MN_HG) - MN_HG + MN_PAD * 2);
+    const svgH    = numRows * (MN_H + MN_VG) - MN_VG + MN_PAD * 2;
+
+    // Compute node positions
+    const pos = {};
+    rows.forEach(({ row, persons }) => {
+        const rowW   = persons.length * MN_W + (persons.length - 1) * MN_HG;
+        const startX = (svgW - rowW) / 2;
+        persons.forEach((person, i) => {
+            if (!person) return;
+            pos[person.id] = {
+                x: startX + i * (MN_W + MN_HG),
+                y: MN_PAD + row * (MN_H + MN_VG)
+            };
+        });
+    });
+
+    const LC = "#94a3b8"; // line color (overridden by CSS for dark mode via class)
+    let lines = "";
+    let nodes = "";
+
+    // Parents → focal connecting lines
+    if (hasParents) {
+        const fp = pos[focusId];
+        const pps = parents.map(pr => pos[pr.id]).filter(Boolean);
+        if (fp && pps.length) {
+            const botY  = pps[0].y + MN_H;
+            const topY  = fp.y;
+            const midY  = botY + (topY - botY) * 0.5;
+            const fcx   = fp.x + MN_W / 2;
+            if (pps.length === 1) {
+                const px = pps[0].x + MN_W / 2;
+                lines += `<line x1="${px}" y1="${botY}" x2="${fcx}" y2="${topY}" class="mg-line"/>`;
+            } else {
+                const lx = Math.min(...pps.map(p => p.x + MN_W / 2));
+                const rx = Math.max(...pps.map(p => p.x + MN_W / 2));
+                pps.forEach(p => {
+                    lines += `<line x1="${p.x + MN_W / 2}" y1="${botY}" x2="${p.x + MN_W / 2}" y2="${midY}" class="mg-line"/>`;
+                });
+                lines += `<line x1="${lx}" y1="${midY}" x2="${rx}" y2="${midY}" class="mg-line"/>`;
+                lines += `<line x1="${fcx}" y1="${midY}" x2="${fcx}" y2="${topY}" class="mg-line"/>`;
+            }
+        }
+    }
+
+    // Focal ↔ spouses (dashed purple)
+    const fp = pos[focusId];
+    spouses.forEach(sp => {
+        const spp = pos[sp.id];
+        if (!fp || !spp) return;
+        const y  = fp.y + MN_H / 2;
+        const x1 = Math.min(fp.x + MN_W, spp.x);
+        const x2 = Math.max(fp.x + MN_W, spp.x);
+        lines += `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" class="mg-line-spouse"/>`;
+    });
+
+    // Focal → children connecting lines
+    if (hasChildren) {
+        const fpp = pos[focusId];
+        const cps = children.map(ch => pos[ch.id]).filter(Boolean);
+        if (fpp && cps.length) {
+            const botY = fpp.y + MN_H;
+            const topY = cps[0].y;
+            const midY = botY + (topY - botY) * 0.5;
+            const fcx  = fpp.x + MN_W / 2;
+            if (cps.length === 1) {
+                const cx = cps[0].x + MN_W / 2;
+                lines += `<line x1="${fcx}" y1="${botY}" x2="${cx}" y2="${topY}" class="mg-line"/>`;
+            } else {
+                const lx = Math.min(...cps.map(p => p.x + MN_W / 2));
+                const rx = Math.max(...cps.map(p => p.x + MN_W / 2));
+                lines += `<line x1="${fcx}" y1="${botY}" x2="${fcx}" y2="${midY}" class="mg-line"/>`;
+                lines += `<line x1="${lx}" y1="${midY}" x2="${rx}" y2="${midY}" class="mg-line"/>`;
+                cps.forEach(p => {
+                    lines += `<line x1="${p.x + MN_W / 2}" y1="${midY}" x2="${p.x + MN_W / 2}" y2="${topY}" class="mg-line"/>`;
+                });
+            }
+        }
+    }
+
+    // Build node SVG elements
+    const allPersons = [...parents, focal, ...spouses, ...children];
+    allPersons.forEach(person => {
+        if (!person) return;
+        const p = pos[person.id];
+        if (!p) return;
+        const isFocal  = person.id === focusId;
+        const gcls     = _miniGenderClass(person.gender);
+        const bar      = _miniBarColor(person.gender);
+        const clickAttr = isFocal ? "" : `onclick="selectPerson('${person.id}')"`;
+        const name     = person.name.length > 5 ? person.name.slice(0, 5) + "…" : person.name;
+        const birthYr  = person.birth ? person.birth.slice(0, 4) : "";
+        const nodeCls  = `mg-node ${isFocal ? "mg-focal" : "mg-clickable"}`;
+
+        nodes += `<g class="${nodeCls}" ${clickAttr}>
+  <title>${_escHtml(person.name)}${birthYr ? " b." + birthYr : ""}</title>
+  <rect x="${p.x}" y="${p.y}" width="${MN_W}" height="${MN_H}" rx="6" ry="6"
+        class="mg-rect ${gcls}${isFocal ? " mg-focal-rect" : ""}"/>
+  <rect x="${p.x}" y="${p.y}" width="${MN_W}" height="3" rx="3" ry="3"
+        fill="${bar}" class="mg-bar"/>
+  <text x="${p.x + 5}" y="${p.y + 18}" class="mg-name${isFocal ? " mg-focal-name" : ""}"
+        font-size="10" font-family="Arial,'PingFang SC','Microsoft YaHei',sans-serif">${_escHtml(name)}</text>
+  ${birthYr ? `<text x="${p.x + MN_W - 3}" y="${p.y + 26}" class="mg-year"
+        font-size="8" text-anchor="end" font-family="Arial,sans-serif">${birthYr}</text>` : ""}
+</g>`;
+    });
+
+    return `
+<div class="editor-section mini-graph-section">
+  <h5>${t("mini-graph-title")}</h5>
+  <div class="mini-graph-wrap">
+    <svg xmlns="http://www.w3.org/2000/svg"
+         width="${svgW}" height="${svgH}"
+         viewBox="0 0 ${svgW} ${svgH}"
+         class="mini-graph-svg">
+      ${lines}${nodes}
+    </svg>
+  </div>
+</div>`;
 }
 
 // selectPerson 供外部调用

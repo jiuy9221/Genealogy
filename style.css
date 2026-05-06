@@ -1364,3 +1364,69 @@ body.dark-mode .ev-other     { background: #1e293b; color: #94a3b8; border-color
 body.dark-mode .ev-year-input,
 body.dark-mode .ev-type-select,
 body.dark-mode .ev-desc-input { border-color: #334155; }
+
+/* ─── 迷你关系图 ──────────────────────────────────────────────────────────── */
+.mini-graph-section { }
+.mini-graph-wrap {
+    overflow-x: auto;
+    padding: 4px 0 8px;
+}
+.mini-graph-svg {
+    display: block;
+    overflow: visible;
+}
+.mini-graph-empty {
+    color: var(--color-text-muted, #94a3b8);
+    font-size: 12px;
+    text-align: center;
+    padding: 6px 0;
+    margin: 0;
+}
+
+/* Connecting lines */
+.mini-graph-svg .mg-line {
+    stroke: #94a3b8;
+    stroke-width: 1.5;
+    fill: none;
+}
+.mini-graph-svg .mg-line-spouse {
+    stroke: #a78bfa;
+    stroke-width: 1.5;
+    stroke-dasharray: 4 3;
+    fill: none;
+}
+
+/* Node rectangles */
+.mini-graph-svg .mg-rect {
+    stroke-width: 1.5;
+}
+.mini-graph-svg .mg-male   { fill: #eff6ff; stroke: #93c5fd; }
+.mini-graph-svg .mg-female { fill: #fdf2f8; stroke: #f9a8d4; }
+.mini-graph-svg .mg-other  { fill: #f8fafc; stroke: #cbd5e1; }
+
+/* Focal person highlight */
+.mini-graph-svg .mg-focal-rect             { stroke-width: 2.5; }
+.mini-graph-svg .mg-focal-rect.mg-male     { fill: #dbeafe; stroke: #2563eb; }
+.mini-graph-svg .mg-focal-rect.mg-female   { fill: #fce7f3; stroke: #db2777; }
+.mini-graph-svg .mg-focal-rect.mg-other    { fill: #f1f5f9; stroke: #475569; }
+
+/* Text */
+.mini-graph-svg .mg-name       { fill: #334155; }
+.mini-graph-svg .mg-focal-name { font-weight: 700; fill: #1e293b; }
+.mini-graph-svg .mg-year       { fill: #94a3b8; }
+
+/* Hover on non-focal nodes */
+.mini-graph-svg .mg-clickable { cursor: pointer; }
+.mini-graph-svg .mg-clickable:hover .mg-rect { opacity: 0.82; }
+
+/* Dark mode overrides */
+body.dark-mode .mini-graph-svg .mg-line         { stroke: #475569; }
+body.dark-mode .mini-graph-svg .mg-male         { fill: #1a3a5c; stroke: #3b82f6; }
+body.dark-mode .mini-graph-svg .mg-female       { fill: #4a1942; stroke: #f472b6; }
+body.dark-mode .mini-graph-svg .mg-other        { fill: #1e293b; stroke: #475569; }
+body.dark-mode .mini-graph-svg .mg-focal-rect.mg-male   { fill: #1e3a8a; stroke: #60a5fa; }
+body.dark-mode .mini-graph-svg .mg-focal-rect.mg-female { fill: #831843; stroke: #f9a8d4; }
+body.dark-mode .mini-graph-svg .mg-focal-rect.mg-other  { fill: #334155; stroke: #64748b; }
+body.dark-mode .mini-graph-svg .mg-name         { fill: #cbd5e1; }
+body.dark-mode .mini-graph-svg .mg-focal-name   { fill: #e2e8f0; }
+body.dark-mode .mini-graph-svg .mg-year         { fill: #64748b; }

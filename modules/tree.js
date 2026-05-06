@@ -6,6 +6,16 @@ const H_GAP = 28;
 const V_GAP = 100;
 const SPOUSE_GAP = 12;
 
+const EVENT_TYPE_COLORS = {
+    birth:     "#3b82f6",
+    death:     "#ef4444",
+    marriage:  "#ec4899",
+    migration: "#22c55e",
+    education: "#eab308",
+    career:    "#8b5cf6",
+    other:     "#94a3b8"
+};
+
 // ─── 模块级状态 ──────────────────────────────────────────────────────────
 const _nodeGroups    = {}; // personId -> <g>
 const _customOffsets = {}; // personId -> { dx, dy } 拖拽偏移（模块生命周期持久）
@@ -410,6 +420,28 @@ function _renderNodeGroup(p, pos, onNodeClick, enableDrag) {
         g.appendChild(lt);
     }
 
+    // Event count badge (amber circle in top-right corner)
+    if (p.events && p.events.length > 0) {
+        const cnt = p.events.length;
+        const badgeG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        badgeG.setAttribute("pointer-events", "none");
+        const dark = document.body.classList.contains("dark-mode");
+        badgeG.appendChild(svgEl("circle", {
+            cx: NODE_W - 8, cy: 8, r: "8",
+            fill: dark ? "#d97706" : "#f59e0b",
+            stroke: dark ? "#1e293b" : "#fff", "stroke-width": "1.5"
+        }));
+        const bt = svgEl("text", {
+            x: NODE_W - 8, y: 8,
+            "text-anchor": "middle", "dominant-baseline": "middle",
+            "font-size": "8", "font-weight": "800", fill: "#fff",
+            "pointer-events": "none"
+        });
+        bt.textContent = cnt > 9 ? "9+" : String(cnt);
+        badgeG.appendChild(bt);
+        g.appendChild(badgeG);
+    }
+
     return g;
 }
 
@@ -667,6 +699,33 @@ function renderTimeline(data, svgEl_el, onNodeClick) {
         if (!pos) return;
         gNodes.appendChild(_renderNodeGroup(p, pos, onNodeClick, false));
     });
+
+    // 生平事件菱形标记（节点正下方，按年份对齐横轴）
+    const gEvents = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    data.persons.forEach(p => {
+        if (!p.events || !p.events.length) return;
+        const level = levelMap[p.id] ?? 0;
+        const markerBaseY = levelToY(level) + NODE_H + 10;
+
+        p.events.forEach(ev => {
+            if (!ev.year || isNaN(parseInt(ev.year))) return;
+            const ey = parseInt(ev.year);
+            if (ey < minYear || ey > maxYear) return;
+            const ex  = yearToX(ey);
+            const col = EVENT_TYPE_COLORS[ev.type] || "#94a3b8";
+            const s   = 5;
+            const diamond = svgEl("path", {
+                d: `M${ex},${markerBaseY - s} L${ex + s},${markerBaseY} L${ex},${markerBaseY + s} L${ex - s},${markerBaseY} Z`,
+                fill: col, stroke: dark ? "#0f172a" : "#fff", "stroke-width": "1",
+                opacity: "0.9", cursor: "default"
+            });
+            const titleEl = document.createElementNS("http://www.w3.org/2000/svg", "title");
+            titleEl.textContent = `${p.name} · ${ev.year} · [${ev.type}] ${ev.desc}`;
+            diamond.appendChild(titleEl);
+            gEvents.appendChild(diamond);
+        });
+    });
+    svgEl_el.appendChild(gEvents);
 }
 
 // ─── 节点中心坐标（供 app.js 视口自动居中）──────────────────────────────────
