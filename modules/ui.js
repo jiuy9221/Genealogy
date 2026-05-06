@@ -606,6 +606,10 @@ function showStatsModal() {
     <div class="stat-label">${t("stats-lifespan")}</div>
   </div>
 </div>
+<div class="stats-charts">
+  ${_buildGenderPie(s)}
+  ${_buildGenBar(_data)}
+</div>
 ${s.maxChildrenPerson ? `
 <div class="stats-highlight">
   <span class="stats-hl-label">${t("stats-most-children")}</span>
@@ -618,6 +622,115 @@ ${s.oldest ? `
 </div>` : ""}`;
 
     showModal(t("stats-title"), bodyHTML, () => {}, t("modal-cancel"));
+}
+
+// ─── 统计图表：性别分布饼图 ───────────────────────────────────────────────
+function _buildGenderPie(s) {
+    const total = s.total;
+    if (total === 0) return "";
+    const dark = document.body.classList.contains("dark-mode");
+    const cx = 60, cy = 60, r = 48, innerR = 28;
+
+    const segs = [
+        { count: s.males,   color: "#3b82f6", label: t("gender-male") },
+        { count: s.females, color: "#ec4899", label: t("gender-female") },
+        { count: s.unknown, color: "#94a3b8", label: t("gender-unknown") }
+    ].filter(x => x.count > 0);
+
+    function polar(cx, cy, r, deg) {
+        const rad = (deg - 90) * Math.PI / 180;
+        return [+(cx + r * Math.cos(rad)).toFixed(2), +(cy + r * Math.sin(rad)).toFixed(2)];
+    }
+
+    let angle = 0;
+    let paths = "";
+    segs.forEach(seg => {
+        const sweep = (seg.count / total) * 360;
+        const endAngle = angle + sweep;
+        let path;
+        if (sweep >= 359.9) {
+            const [sx, sy] = polar(cx, cy, r, angle);
+            const [mx, my] = polar(cx, cy, r, angle + 180);
+            path = `M${sx},${sy} A${r},${r} 0 1 1 ${mx},${my} A${r},${r} 0 1 1 ${sx},${sy} Z`;
+        } else {
+            const [sx, sy] = polar(cx, cy, r, angle);
+            const [ex, ey] = polar(cx, cy, r, endAngle);
+            path = `M${cx},${cy} L${sx},${sy} A${r},${r} 0 ${sweep > 180 ? 1 : 0} 1 ${ex},${ey} Z`;
+        }
+        paths += `<path d="${path}" fill="${seg.color}" opacity="0.85"/>`;
+        angle = endAngle;
+    });
+
+    const holeFill = dark ? "#1e293b" : "#ffffff";
+    const textFill = dark ? "#e2e8f0" : "#1e293b";
+    const muteFill = dark ? "#64748b" : "#94a3b8";
+    paths += `<circle cx="${cx}" cy="${cy}" r="${innerR}" fill="${holeFill}"/>`;
+    paths += `<text x="${cx}" y="${cy - 5}" text-anchor="middle" font-size="16" font-weight="700" fill="${textFill}">${total}</text>`;
+    paths += `<text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="9" fill="${muteFill}">${t("stats-total")}</text>`;
+
+    const legendHtml = segs.map(seg =>
+        `<div class="chart-legend-row">
+           <span class="chart-legend-dot" style="background:${seg.color}"></span>
+           <span class="chart-legend-name">${seg.label}</span>
+           <span class="chart-legend-val">${seg.count} (${Math.round(seg.count / total * 100)}%)</span>
+         </div>`
+    ).join("");
+
+    return `<div class="chart-section">
+  <div class="chart-title">${t("stats-gender-dist")}</div>
+  <div class="chart-pie-wrap">
+    <svg width="120" height="120" viewBox="0 0 120 120" class="chart-pie-svg">${paths}</svg>
+    <div class="chart-legend">${legendHtml}</div>
+  </div>
+</div>`;
+}
+
+// ─── 统计图表：代际人数柱状图 ─────────────────────────────────────────────
+function _buildGenBar(data) {
+    // Build level map via BFS
+    const parentsOf  = id => data.relationships.filter(r => r.child  === id).map(r => r.parent);
+    const childrenOf = id => data.relationships.filter(r => r.parent === id).map(r => r.child);
+    const roots = data.persons.filter(p => parentsOf(p.id).length === 0).map(p => p.id);
+    const levelMap = {};
+    const queue = roots.map(id => ({ id, level: 0 }));
+    const visited = new Set();
+    while (queue.length) {
+        const { id, level } = queue.shift();
+        if (visited.has(id)) { if (level > (levelMap[id] ?? 0)) levelMap[id] = level; continue; }
+        visited.add(id);
+        levelMap[id] = level;
+        childrenOf(id).forEach(cid => queue.push({ id: cid, level: level + 1 }));
+    }
+    data.persons.forEach(p => { if (levelMap[p.id] === undefined) levelMap[p.id] = 0; });
+
+    const levelCounts = {};
+    Object.entries(levelMap).forEach(([, lv]) => { levelCounts[lv] = (levelCounts[lv] || 0) + 1; });
+    const levels = Object.keys(levelCounts).map(Number).sort((a, b) => a - b);
+    if (!levels.length) return "";
+
+    const maxCount = Math.max(...Object.values(levelCounts));
+    const dark = document.body.classList.contains("dark-mode");
+    const BAR_H = 20, GAP = 6, PAD_L = 46, PAD_R = 34, PAD_V = 8, CHART_W = 250;
+    const svgH = levels.length * (BAR_H + GAP) - GAP + PAD_V * 2;
+    const maxBarW = CHART_W - PAD_L - PAD_R;
+    const textFill = dark ? "#94a3b8" : "#64748b";
+    const valFill  = dark ? "#e2e8f0" : "#1e293b";
+
+    let bars = "";
+    levels.forEach((lv, i) => {
+        const count = levelCounts[lv];
+        const barW  = maxCount > 0 ? Math.max(4, (count / maxCount) * maxBarW) : 0;
+        const y     = PAD_V + i * (BAR_H + GAP);
+        const genLabel = t("generation-prefix") + (lv + 1) + t("generation-suffix");
+        bars += `<text x="${PAD_L - 4}" y="${y + BAR_H / 2}" text-anchor="end" dominant-baseline="middle" font-size="10" fill="${textFill}">${genLabel}</text>`;
+        bars += `<rect x="${PAD_L}" y="${y}" width="${barW.toFixed(1)}" height="${BAR_H}" rx="4" fill="#3b82f6" opacity="0.82"/>`;
+        bars += `<text x="${PAD_L + barW + 5}" y="${y + BAR_H / 2}" dominant-baseline="middle" font-size="10" fill="${valFill}">${count}</text>`;
+    });
+
+    return `<div class="chart-section">
+  <div class="chart-title">${t("stats-gen-dist")}</div>
+  <svg width="${CHART_W}" height="${svgH}" viewBox="0 0 ${CHART_W} ${svgH}" class="gen-bar-svg">${bars}</svg>
+</div>`;
 }
 
 // ─── 头像上传 & 清除 ────────────────────────────────────────────────────

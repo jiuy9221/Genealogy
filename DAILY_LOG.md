@@ -1,5 +1,24 @@
 # Genealogy Daily Development Log
 
+## 2026-05-06 (第二次推进)
+- 更新文件：modules/tree.js、modules/ui.js、modules/i18n.js、style.css
+- 新增功能：
+  - **时间轴事件菱形点击浮层**（tree.js）：
+    - 新增 `_showEventPopup(person, ev, clientX, clientY)` 函数：在点击位置生成固定定位的 `.event-popup` 卡片，展示人员姓名、事件类型标签、年份、描述；自动调整位置避免超出视口；×关闭按钮与点击外部均可关闭；动画淡入缩放效果（150ms）。
+    - 菱形 `cursor` 改为 `pointer`，尺寸从 5px → 6px，悬停时 opacity 加强到 1.0；点击 `stopPropagation` 避免触发 SVG 背景关闭事件。
+    - `renderTree` 和视图切换时自动调用 `_hideEventPopup()` 清理浮层。
+  - **统计面板图表**（ui.js）：
+    - `_buildGenderPie(s)` 函数：生成 SVG 饼图（donut style）；3 段：男/女/未知，颜色 #3b82f6/#ec4899/#94a3b8；内圆显示总人数与"总人数"标签；图例含颜色点、性别名称、数量与百分比；支持「仅一种性别」（360°）的全圆情形。
+    - `_buildGenBar(data)` 函数：内联 BFS 计算各代人数；生成 SVG 水平柱状图，每行对应一个代际层，柱宽按该代人数占最大代人数的比例归一化，最小宽 4px；右侧标注数量；亮/暗主题各自配色。
+    - `showStatsModal` 在原有 6 格统计卡下方插入 `.stats-charts` 区块，并排显示两张图。
+  - **i18n 扩展**：三语各新增 3 个键（`stats-gender-dist`、`stats-gen-dist`、`event-popup-close`，共 9 条翻译）。
+  - **打印样式增强**（style.css）：
+    - `@media print` 区块：隐藏顶栏/左右面板/图例/弹层；中间族谱树区占满全宽；`tree-area` 取消 transform；`@page` 指定 A3 横向打印；`print-color-adjust: exact` 保留填充色。
+- 下一步：
+  - 批量选中节点（框选 / Shift 点击）并导出子树 JSON
+  - 节点备注快速预览（tooltip 悬停显示备注内容）
+  - 更完善的"合并重复人员"工具（按姓名+出生年相似度检测）
+
 ## 2026-04-29
 - 更新文件：index.html, style.css, app.js, modules/data.js（新建）, modules/tree.js（新建）, modules/ui.js（新建）, architecture.md, DAILY_LOG.md（新建）
 - 新增功能：

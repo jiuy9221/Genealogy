@@ -27,6 +27,52 @@ let   _dragHandlersInitialized = false;
 let   _currentViewMode = "tree"; // "tree" | "timeline"
 window._nodeDragActive = false;
 
+// ─── 时间轴事件详情弹层 ───────────────────────────────────────────────────
+let _eventPopupEl = null;
+
+function _hideEventPopup() {
+    if (_eventPopupEl) { _eventPopupEl.remove(); _eventPopupEl = null; }
+}
+window.hideEventPopup = _hideEventPopup;
+
+function _showEventPopup(person, ev, clientX, clientY) {
+    _hideEventPopup();
+    const col = EVENT_TYPE_COLORS[ev.type] || "#94a3b8";
+    const typeLabel = window.t ? t("event-type-" + ev.type) : ev.type;
+    const popup = document.createElement("div");
+    popup.className = "event-popup";
+    popup.innerHTML = `
+<div class="event-popup-header">
+  <span class="event-popup-person">${person.name}</span>
+  <button class="event-popup-close" title="${window.t ? t("event-popup-close") : "Close"}">&times;</button>
+</div>
+<div class="event-popup-body">
+  <div class="event-popup-meta">
+    <span class="event-type-tag ev-${ev.type}">${typeLabel}</span>
+    <span class="event-popup-year">${ev.year || "?"}</span>
+  </div>
+  ${ev.desc ? `<div class="event-popup-desc">${ev.desc}</div>` : ""}
+</div>`;
+
+    document.body.appendChild(popup);
+    _eventPopupEl = popup;
+
+    popup.style.left = (clientX + 10) + "px";
+    popup.style.top  = (clientY + 10) + "px";
+
+    requestAnimationFrame(() => {
+        const rect = popup.getBoundingClientRect();
+        if (rect.right  > window.innerWidth  - 8) popup.style.left = Math.max(8, clientX - rect.width  - 8) + "px";
+        if (rect.bottom > window.innerHeight - 8) popup.style.top  = Math.max(8, clientY - rect.height - 8) + "px";
+    });
+
+    popup.querySelector(".event-popup-close").addEventListener("click", e => {
+        e.stopPropagation();
+        _hideEventPopup();
+    });
+    setTimeout(() => document.addEventListener("click", _hideEventPopup, { once: true }), 10);
+}
+
 // ─── 右键快捷菜单 ─────────────────────────────────────────────────────────
 let _ctxMenuEl = null;
 
@@ -448,6 +494,7 @@ function _renderNodeGroup(p, pos, onNodeClick, enableDrag) {
 // ─── 主渲染 ──────────────────────────────────────────────────────────────
 function renderTree(data, svgEl_el, onNodeClick) {
     _currentViewMode = "tree";
+    _hideEventPopup();
     initDragHandlers();
     svgEl_el.innerHTML = "";
     Object.keys(_nodeGroups).forEach(k => delete _nodeGroups[k]);
@@ -700,7 +747,8 @@ function renderTimeline(data, svgEl_el, onNodeClick) {
         gNodes.appendChild(_renderNodeGroup(p, pos, onNodeClick, false));
     });
 
-    // 生平事件菱形标记（节点正下方，按年份对齐横轴）
+    // 生平事件菱形标记（节点正下方，按年份对齐横轴；点击弹出详情浮层）
+    _hideEventPopup();
     const gEvents = document.createElementNS("http://www.w3.org/2000/svg", "g");
     data.persons.forEach(p => {
         if (!p.events || !p.events.length) return;
@@ -713,15 +761,22 @@ function renderTimeline(data, svgEl_el, onNodeClick) {
             if (ey < minYear || ey > maxYear) return;
             const ex  = yearToX(ey);
             const col = EVENT_TYPE_COLORS[ev.type] || "#94a3b8";
-            const s   = 5;
+            const s   = 6;
             const diamond = svgEl("path", {
                 d: `M${ex},${markerBaseY - s} L${ex + s},${markerBaseY} L${ex},${markerBaseY + s} L${ex - s},${markerBaseY} Z`,
-                fill: col, stroke: dark ? "#0f172a" : "#fff", "stroke-width": "1",
-                opacity: "0.9", cursor: "default"
+                fill: col, stroke: dark ? "#0f172a" : "#fff", "stroke-width": "1.2",
+                opacity: "0.9", cursor: "pointer"
             });
             const titleEl = document.createElementNS("http://www.w3.org/2000/svg", "title");
             titleEl.textContent = `${p.name} · ${ev.year} · [${ev.type}] ${ev.desc}`;
             diamond.appendChild(titleEl);
+            diamond.addEventListener("click", e => {
+                e.stopPropagation();
+                _showEventPopup(p, ev, e.clientX, e.clientY);
+            });
+            // Hover highlight
+            diamond.addEventListener("mouseenter", () => diamond.setAttribute("opacity", "1"));
+            diamond.addEventListener("mouseleave", () => diamond.setAttribute("opacity", "0.9"));
             gEvents.appendChild(diamond);
         });
     });

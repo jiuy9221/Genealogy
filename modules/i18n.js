@@ -178,7 +178,10 @@ const TRANSLATIONS = {
         "toast-event-removed": "已删除生平事件",
         "longpress-hint": "长按节点显示菜单（移动端）",
         "mini-graph-title": "亲属关系图",
-        "mini-graph-no-rels": "暂无直系亲属关系"
+        "mini-graph-no-rels": "暂无直系亲属关系",
+        "stats-gender-dist": "性别分布",
+        "stats-gen-dist": "代际人数",
+        "event-popup-close": "关闭"
     },
     "zh-TW": {
         "app-title": "族譜",
@@ -355,7 +358,10 @@ const TRANSLATIONS = {
         "toast-event-removed": "已刪除生平事件",
         "longpress-hint": "長按節點顯示選單（行動裝置）",
         "mini-graph-title": "親屬關係圖",
-        "mini-graph-no-rels": "暫無直系親屬關係"
+        "mini-graph-no-rels": "暫無直系親屬關係",
+        "stats-gender-dist": "性別分布",
+        "stats-gen-dist": "代際人數",
+        "event-popup-close": "關閉"
     },
     "en": {
         "app-title": "Family Tree",
@@ -532,7 +538,10 @@ const TRANSLATIONS = {
         "toast-event-removed": "Life event removed",
         "longpress-hint": "Long-press node for menu (mobile)",
         "mini-graph-title": "Relationship Map",
-        "mini-graph-no-rels": "No direct relationships"
+        "mini-graph-no-rels": "No direct relationships",
+        "stats-gender-dist": "Gender Distribution",
+        "stats-gen-dist": "By Generation",
+        "event-popup-close": "Close"
     }
 };
 
