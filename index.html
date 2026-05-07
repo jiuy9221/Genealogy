@@ -89,6 +89,16 @@
             <select id="tag-filter" class="tag-filter-select" title="按标签筛选">
                 <option value="" data-i18n="filter-all-tags">所有标签</option>
             </select>
+            <div id="birth-year-filter" class="birth-year-filter" style="display:none;">
+                <input id="birth-from" type="number" class="birth-year-input"
+                       data-i18n-placeholder="birth-from-ph" placeholder="出生年 ≥"
+                       min="1000" max="2100" />
+                <span class="byr-sep">—</span>
+                <input id="birth-to" type="number" class="birth-year-input"
+                       data-i18n-placeholder="birth-to-ph" placeholder="≤ 出生年"
+                       min="1000" max="2100" />
+                <button id="birth-year-clear" class="byr-clear-btn" title="清除年份筛选">✕</button>
+            </div>
         </div>
         <ul id="person-list"></ul>
     </div>
@@ -137,6 +147,15 @@
     <span class="legend-item line-spouse" data-i18n="legend-spouse">- - 配偶</span>
     <span class="legend-sep">|</span>
     <span class="legend-item kbd" data-i18n="legend-shortcuts">+/- 缩放 &nbsp; F 适应 &nbsp; T 切换视图 &nbsp; G 聚焦 &nbsp; D 暗色 &nbsp; 0 重置 &nbsp; 右键节点菜单</span>
+</div>
+
+<!-- 打印页脚（仅打印时显示） -->
+<div id="print-footer">
+    <span id="print-date"></span>
+    <span class="print-footer-sep">·</span>
+    <span data-i18n="app-title">族谱</span>
+    <span class="print-footer-sep">·</span>
+    <span data-i18n="print-footer-hint">离线家族树</span>
 </div>
 
 <!-- 移动端底部导航栏（仅 ≤640px 显示） -->

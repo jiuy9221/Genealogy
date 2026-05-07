@@ -331,3 +331,28 @@
   - 关系强度可视化（连线粗细/颜色随代际深度变化）
   - 导出 PDF（@media print 强化或 jsPDF 离线库）
   - 搜索支持拼音/汉字混合模糊匹配
+
+## 2026-05-07 (第三次推进)
+- 更新文件：modules/tree.js、modules/ui.js、modules/i18n.js、style.css、index.html、app.js
+- 新增功能：
+  - **代际连线彩色着色（Generational Edge Coloring）**（tree.js）：
+    - 新增 `GEN_EDGE_COLORS` 七色调色盘（靛蓝/天蓝/翠绿/琥珀/红/紫/青），以及 `_genLineColor(level)` 函数；
+    - `renderConnections` 签名扩展 `levelMap = {}` 参数；双亲对（`pairMap`）的所有连线（父→耦合 Y、耦合横杆、纵轴、子代横杆、→子节点纵线）均使用父代 `_genLineColor(levelMap[p1])` 着色；单亲连线同理；无子女配偶虚线仍保持紫色（#c084fc）以区分婚姻连线；
+    - `renderTree` 与 `renderTimeline` 均已传入 `levelMap`；
+    - 族谱树左侧「第N代」代际标签颜色与对应连线颜色一致（替换固定灰色），同时在树视图右上角新增半透明代际颜色图例框（第1代～第N代，显示色块+标签，仅当代数 ≥ 2 时出现）；
+    - 时间轴视图代际标签同步着色。
+  - **出生年份区间筛选（Birth Year Range Filter）**（ui.js + index.html + style.css + i18n.js）：
+    - `modules/ui.js` 新增 `_birthFrom`、`_birthTo` 两个状态变量；新增 `bindBirthYearFilter()` 函数（绑定 `#birth-from`、`#birth-to` 输入事件与 `#birth-year-clear` 清除按钮），在 `init()` 中调用；
+    - `renderPersonList` 扩展：对 `_birthFrom`/`_birthTo` 非空时按出生年数值过滤（跳过无出生年记录者）；搜索计数与空列表提示同步感知该过滤器；`#birth-year-filter` 容器当族谱中无出生年数据时自动隐藏；
+    - `index.html` 在 `#tag-filter` 之后新增 `#birth-year-filter` 区域：两个 `<input type="number">` 输入框（`#birth-from`/`#birth-to`）+ 分隔符 + 清除按钮（`#birth-year-clear`）；
+    - `style.css` 新增 13 条规则（`.birth-year-filter`、`.birth-year-input`（+spin-btn 隐藏+focus）、`.byr-sep`、`.byr-clear-btn`（+hover）、暗色适配 × 3）；
+    - `i18n.js` 三语各新增 4 个键（`birth-from-ph`、`birth-to-ph`、`birth-year-filter-title`、`print-footer-hint`，共 12 条翻译）；同时补充 `applyI18n` 支持 `data-i18n-placeholder` 属性（`[data-i18n-placeholder]` 批量设置 `placeholder`）。
+  - **打印/PDF 增强（Print Layout Enhancement）**（style.css + index.html + app.js）：
+    - `index.html` 新增 `#print-footer` div（屏幕隐藏，打印时显示）：包含打印日期（`#print-date`）、分隔符、应用标题；
+    - `app.js` 打印按钮点击时自动填入 `#print-date`（`new Date().toLocaleDateString("zh-CN")`）再调用 `window.print()`；
+    - `style.css` 新增 `#print-footer { display: none }` 基础规则与 `@media print` 中的页脚显示样式（`display:flex`、居中、边框上线、字号 9px）；同时在打印 CSS 内补充 `#print-title-bar` 边框和字母间距、隐藏 `#birth-year-filter`。
+- 下一步：
+  - 搜索支持拼音首字母模糊匹配（已有 getPinyinInitials，考虑扩展为完整拼音）
+  - 关系路径查找（两人之间最短亲属路径）
+  - 人员列表按年龄/代际/性别多维度排序
+  - 节点批量移动（拖选多节点同步平移）

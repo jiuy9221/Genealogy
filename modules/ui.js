@@ -6,6 +6,8 @@ let _onDataChange = null;
 let _searchQuery = "";
 let _tagFilter = "";
 let _selectedIds = new Set();
+let _birthFrom = null;
+let _birthTo = null;
 
 // Deterministic tag color from palette
 function _tagColor(tag) {
@@ -27,6 +29,7 @@ function init(data, onDataChange) {
     _onDataChange = onDataChange;
     bindButtons();
     bindTagFilter();
+    bindBirthYearFilter();
 }
 
 function bindTagFilter() {
@@ -36,6 +39,28 @@ function bindTagFilter() {
         _tagFilter = e.target.value;
         renderPersonList(_data);
     });
+}
+
+function bindBirthYearFilter() {
+    const fromEl = document.getElementById("birth-from");
+    const toEl   = document.getElementById("birth-to");
+    if (!fromEl || !toEl) return;
+    const handler = () => {
+        _birthFrom = fromEl.value ? parseInt(fromEl.value) : null;
+        _birthTo   = toEl.value   ? parseInt(toEl.value)   : null;
+        renderPersonList(_data);
+    };
+    fromEl.addEventListener("input", handler);
+    toEl.addEventListener("input", handler);
+    // Clear button
+    const clrBtn = document.getElementById("birth-year-clear");
+    if (clrBtn) {
+        clrBtn.addEventListener("click", () => {
+            fromEl.value = ""; toEl.value = "";
+            _birthFrom = null; _birthTo = null;
+            renderPersonList(_data);
+        });
+    }
 }
 
 function bindButtons() {
@@ -219,6 +244,23 @@ function renderPersonList(data) {
     if (_tagFilter) {
         persons = persons.filter(p => (p.tags || []).includes(_tagFilter));
     }
+    if (_birthFrom !== null || _birthTo !== null) {
+        persons = persons.filter(p => {
+            if (!p.birth) return false;
+            const yr = parseInt(p.birth);
+            if (isNaN(yr)) return false;
+            if (_birthFrom !== null && yr < _birthFrom) return false;
+            if (_birthTo   !== null && yr > _birthTo)   return false;
+            return true;
+        });
+    }
+
+    // Show/hide birth year filter based on whether any persons have birth data
+    const byrFilter = document.getElementById("birth-year-filter");
+    if (byrFilter) {
+        const hasBirthData = data.persons.some(p => p.birth && !isNaN(parseInt(p.birth)));
+        byrFilter.style.display = hasBirthData ? "" : "none";
+    }
 
     document.getElementById("person-count").textContent = data.persons.length;
 
@@ -236,7 +278,7 @@ function renderPersonList(data) {
     // Update search count indicator
     const countEl = document.getElementById("search-count");
     if (countEl) {
-        if (_searchQuery || _tagFilter) {
+        if (_searchQuery || _tagFilter || _birthFrom !== null || _birthTo !== null) {
             countEl.textContent = t("search-count-filtered")
                 .replace("{f}", persons.length)
                 .replace("{n}", data.persons.length);
@@ -249,7 +291,7 @@ function renderPersonList(data) {
     if (!persons.length) {
         const li = document.createElement("li");
         li.className = "empty-hint";
-        li.textContent = (_searchQuery || _tagFilter) ? t("no-match") : t("no-people");
+        li.textContent = (_searchQuery || _tagFilter || _birthFrom !== null || _birthTo !== null) ? t("no-match") : t("no-people");
         list.appendChild(li);
         return;
     }

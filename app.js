@@ -422,7 +422,11 @@ function setupExtraButtons() {
     document.getElementById("btn-export-png").addEventListener("click", exportTreeAsPNG);
     document.getElementById("btn-fit-view").addEventListener("click", autoFitTree);
     document.getElementById("btn-share").addEventListener("click", generateShareLink);
-    document.getElementById("btn-print").addEventListener("click", () => window.print());
+    document.getElementById("btn-print").addEventListener("click", () => {
+        const pd = document.getElementById("print-date");
+        if (pd) pd.textContent = new Date().toLocaleDateString("zh-CN");
+        window.print();
+    });
 
     const resetDrag = document.getElementById("btn-reset-drag");
     if (resetDrag) {

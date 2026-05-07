@@ -24,6 +24,20 @@ function _tagColorTree(tag) {
     return P[h % P.length];
 }
 
+// ─── 代际连线颜色（每代一色，亮/暗通用）────────────────────────────────────
+const GEN_EDGE_COLORS = [
+    "#6366f1", // 第1代 indigo
+    "#0284c7", // 第2代 sky
+    "#059669", // 第3代 emerald
+    "#d97706", // 第4代 amber
+    "#dc2626", // 第5代 red
+    "#7c3aed", // 第6代 violet
+    "#0891b2"  // 第7代+ cyan
+];
+function _genLineColor(level) {
+    return GEN_EDGE_COLORS[Math.min(typeof level === "number" ? level : 0, GEN_EDGE_COLORS.length - 1)];
+}
+
 // ─── 模块级状态 ──────────────────────────────────────────────────────────
 const _nodeGroups    = {}; // personId -> <g>
 const _customOffsets = {}; // personId -> { dx, dy } 拖拽偏移（模块生命周期持久）
@@ -288,7 +302,7 @@ function buildTreeLayout(data) {
 }
 
 // ─── 连线渲染（渔骨式）────────────────────────────────────────────────────
-function renderConnections(data, gLines, nodePositions, parentsOf) {
+function renderConnections(data, gLines, nodePositions, parentsOf, levelMap = {}) {
     const { relationships, marriages } = data;
     const drawnMarriage = new Set();
 
@@ -335,30 +349,32 @@ function renderConnections(data, gLines, nodePositions, parentsOf) {
     pairMap.forEach(({ p1, p2, children }) => {
         const pp1 = nodePositions[p1], pp2 = nodePositions[p2];
         if (!pp1 || !pp2) return;
+        const genCol = _genLineColor(levelMap[p1] ?? 0);
         const bx1 = pp1.x + NODE_W / 2, bx2 = pp2.x + NODE_W / 2;
         const by  = Math.max(pp1.y, pp2.y) + NODE_H;
         const couplingY = by + V_GAP * 0.28;
         const jX  = (bx1 + bx2) / 2;
-        drawLine(gLines, bx1, by, bx1, couplingY);
-        drawLine(gLines, bx2, by, bx2, couplingY);
-        drawLine(gLines, Math.min(bx1, bx2), couplingY, Math.max(bx1, bx2), couplingY, "#a78bfa");
+        drawLine(gLines, bx1, by, bx1, couplingY, genCol);
+        drawLine(gLines, bx2, by, bx2, couplingY, genCol);
+        drawLine(gLines, Math.min(bx1, bx2), couplingY, Math.max(bx1, bx2), couplingY, genCol);
         const validC = children.filter(cid => nodePositions[cid]);
         if (!validC.length) return;
         const childTopY = Math.min(...validC.map(cid => nodePositions[cid].y));
         const childBarY = childTopY - V_GAP * 0.28;
         const childXs   = validC.map(cid => nodePositions[cid].x + NODE_W / 2);
-        drawLine(gLines, jX, couplingY, jX, childBarY);
-        if (childXs.length > 1) drawLine(gLines, Math.min(...childXs), childBarY, Math.max(...childXs), childBarY);
-        childXs.forEach(cx => drawLine(gLines, cx, childBarY, cx, childTopY));
+        drawLine(gLines, jX, couplingY, jX, childBarY, genCol);
+        if (childXs.length > 1) drawLine(gLines, Math.min(...childXs), childBarY, Math.max(...childXs), childBarY, genCol);
+        childXs.forEach(cx => drawLine(gLines, cx, childBarY, cx, childTopY, genCol));
     });
 
     singles.forEach(({ parentId, childId }) => {
         const pp = nodePositions[parentId], cp = nodePositions[childId];
         if (!pp || !cp) return;
+        const genCol = _genLineColor(levelMap[parentId] ?? 0);
         const px = pp.x + NODE_W / 2, py = pp.y + NODE_H;
         const cx = cp.x + NODE_W / 2, cy = cp.y;
         const midY = py + (cy - py) * 0.5;
-        drawPath(gLines, `M${px},${py} V${midY} H${cx} V${cy}`);
+        drawPath(gLines, `M${px},${py} V${midY} H${cx} V${cy}`, genCol);
     });
 }
 
@@ -584,13 +600,14 @@ function renderTree(data, svgEl_el, onNodeClick) {
             });
             gBands.appendChild(band);
         }
-        // 左侧代际标签
+        // 左侧代际标签（颜色与对应代际连线匹配）
         const rowY = lv * (NODE_H + V_GAP) + NODE_H / 2;
         const lbl = svgEl("text", {
             x: minX + 6, y: rowY,
             "text-anchor": "start", "dominant-baseline": "middle",
-            "font-size": "11", "font-weight": "600",
-            fill: dark ? "#475569" : "#94a3b8",
+            "font-size": "11", "font-weight": "700",
+            fill: _genLineColor(lv),
+            opacity: dark ? "0.7" : "0.65",
             "pointer-events": "none"
         });
         lbl.textContent = `第${lv + 1}代`;
@@ -603,7 +620,7 @@ function renderTree(data, svgEl_el, onNodeClick) {
     svgEl_el.appendChild(gLines);
     svgEl_el.appendChild(gNodes);
 
-    renderConnections(data, gLines, nodePositions, parentsOf);
+    renderConnections(data, gLines, nodePositions, parentsOf, levelMap);
 
     // 节点
     data.persons.forEach(p => {
@@ -611,6 +628,42 @@ function renderTree(data, svgEl_el, onNodeClick) {
         if (!pos) return;
         gNodes.appendChild(_renderNodeGroup(p, pos, onNodeClick, true));
     });
+
+    // 代际颜色图例（右上角，仅当代数 ≥ 2 时显示）
+    if (maxLevel >= 1) {
+        const legG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        legG.setAttribute("pointer-events", "none");
+        const legPadX = 10, legPadY = 10;
+        const legLineW = 18, legGap = 15;
+        const legCount = maxLevel + 1;
+        const legW = legLineW + 4 + 36;
+        const legH = legCount * legGap + 4;
+        const legX = maxX - legPadX - legW;
+        const legY = minY + legPadY;
+        // 半透明背景框
+        const legBg = svgEl("rect", {
+            x: legX - 4, y: legY - 4, width: legW + 8, height: legH + 4,
+            rx: "5", fill: dark ? "rgba(15,23,42,0.72)" : "rgba(255,255,255,0.82)",
+            stroke: dark ? "#334155" : "#e2e8f0", "stroke-width": "1"
+        });
+        legG.appendChild(legBg);
+        for (let lv = 0; lv <= maxLevel; lv++) {
+            const col = _genLineColor(lv);
+            const ly = legY + lv * legGap + legGap / 2;
+            legG.appendChild(svgEl("line", {
+                x1: legX, y1: ly, x2: legX + legLineW, y2: ly,
+                stroke: col, "stroke-width": "2.5"
+            }));
+            const lt = svgEl("text", {
+                x: legX + legLineW + 4, y: ly,
+                "dominant-baseline": "middle", "font-size": "9.5",
+                fill: dark ? "#e2e8f0" : "#334155", "font-weight": "600"
+            });
+            lt.textContent = `第${lv + 1}代`;
+            legG.appendChild(lt);
+        }
+        svgEl_el.appendChild(legG);
+    }
 }
 
 // ─── 高亮节点 ─────────────────────────────────────────────────────────────
@@ -688,11 +741,12 @@ function renderTimeline(data, svgEl_el, onNodeClick) {
                 fill: _bandFill()
             }));
         }
-        // 左侧代际标签
+        // 左侧代际标签（颜色与树视图一致）
         const lbl = svgEl("text", {
             x: PAD_L - 8, y: levelToY(lv) + NODE_H / 2,
             "text-anchor": "end", "dominant-baseline": "middle",
-            "font-size": "11", fill: dark ? "#64748b" : "#94a3b8"
+            "font-size": "11", "font-weight": "700",
+            fill: _genLineColor(lv), opacity: dark ? "0.7" : "0.65"
         });
         lbl.textContent = `第${lv + 1}代`;
         gGrid.appendChild(lbl);
@@ -766,8 +820,8 @@ function renderTimeline(data, svgEl_el, onNodeClick) {
     // 存坐标供 getNodeCenter 使用
     _basePositions = JSON.parse(JSON.stringify(tlPositions));
 
-    // 连线（复用树视图的连线算法）
-    renderConnections(data, gLines, tlPositions, parentsOf);
+    // 连线（复用树视图的连线算法，带代际着色）
+    renderConnections(data, gLines, tlPositions, parentsOf, levelMap);
 
     // 节点（时间轴模式不启用拖拽）
     data.persons.forEach(p => {

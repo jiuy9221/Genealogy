@@ -198,7 +198,11 @@ const TRANSLATIONS = {
         "mob-people": "人员",
         "mob-tree": "族谱",
         "mob-timeline": "时间轴",
-        "mob-overlay-hint": "点击空白处关闭"
+        "mob-overlay-hint": "点击空白处关闭",
+        "birth-from-ph": "出生年 ≥",
+        "birth-to-ph": "≤ 出生年",
+        "birth-year-filter-title": "按出生年筛选",
+        "print-footer-hint": "离线家族树"
     },
     "zh-TW": {
         "app-title": "族譜",
@@ -395,7 +399,11 @@ const TRANSLATIONS = {
         "mob-people": "人員",
         "mob-tree": "族譜",
         "mob-timeline": "時間軸",
-        "mob-overlay-hint": "點擊空白處關閉"
+        "mob-overlay-hint": "點擊空白處關閉",
+        "birth-from-ph": "出生年 ≥",
+        "birth-to-ph": "≤ 出生年",
+        "birth-year-filter-title": "按出生年篩選",
+        "print-footer-hint": "離線家族樹"
     },
     "en": {
         "app-title": "Family Tree",
@@ -592,7 +600,11 @@ const TRANSLATIONS = {
         "mob-people": "People",
         "mob-tree": "Tree",
         "mob-timeline": "Timeline",
-        "mob-overlay-hint": "Tap outside to close"
+        "mob-overlay-hint": "Tap outside to close",
+        "birth-from-ph": "Birth year ≥",
+        "birth-to-ph": "≤ birth year",
+        "birth-year-filter-title": "Filter by birth year",
+        "print-footer-hint": "Offline Family Tree"
     }
 };
 
@@ -632,6 +644,9 @@ function applyI18n() {
     });
     document.querySelectorAll("[data-i18n-title]").forEach(el => {
         el.title = t(el.dataset.i18nTitle);
+    });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+        el.placeholder = t(el.dataset.i18nPlaceholder);
     });
     document.documentElement.lang = _currentLang === "en" ? "en" : "zh";
     // Sync lang select
