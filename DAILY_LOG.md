@@ -303,3 +303,31 @@
   - 姓氏排行榜（统计面板中显示 Top-5 姓氏）
   - 关系强度可视化（连线粗细或颜色随代际深度变化）
   - 移动端底部快捷操作栏（添加人员、搜索、切换视图）
+
+## 2026-05-07 (第二次推进)
+- 更新文件：modules/ui.js、modules/i18n.js、style.css、index.html
+- 新增功能：
+  - **姓氏分布 Top 5 图表（Surname Distribution Chart）**（ui.js + i18n.js）：
+    - `_buildSurnameChart(data)` 函数：提取每位成员的姓氏（CJK 取首字，西文取空格前第一词）；统计各姓氏人数；取 Top 5 渲染为横向彩色柱状图（`<svg>`）；最高柱优先配色（蓝/绿/琥珀/红/紫）；柱右侧标注计数；少于 2 名同姓时自动跳过；
+    - 嵌入 `showStatsModal` 的 `.stats-charts` 区块（位于出生年份直方图之后）；
+    - `i18n.js` 三语各新增 1 个键（`stats-surname-dist`，共 3 条翻译）。
+  - **批量人员选中与操作（Batch Person Selection）**（ui.js + style.css）：
+    - `_selectedIds: Set<string>` 状态变量跟踪多选 ID 集合；
+    - `renderPersonList` 扩展：Ctrl+Click（或 macOS ⌘+Click）切换选中/取消选中；选中的列表项添加 `.batch-selected` 蓝色左边框高亮；每次列表渲染后调用 `_updateBatchBar()`；
+    - `_updateBatchBar()` 函数：当 `_selectedIds.size > 0` 时在 `#left-panel` 底部（`position: sticky; bottom: 0`）显示操作栏，包含「X 人已选中」计数、「批量删除 🗑」「导出所选 ⬇」「取消选中 ✕」三个按钮；无选中时自动隐藏；
+    - `window.doBatchDelete`：删除所选全部成员及其关系/婚姻记录，并更新视图；
+    - `window.doBatchExport`：将所选成员（含内部关系和婚姻）导出为 `family_subset_YYYY-MM-DD.json` 文件；
+    - `window.clearBatchSelection`：清空选中集合并刷新列表；
+    - `style.css` 新增 17 条规则（`.batch-bar`、`.batch-count`、`.batch-btns`、`.batch-btn-*` × 3、`.person-item.batch-selected`、暗色适配 × 3）。
+    - `i18n.js` 三语各新增 6 个键（共 18 条翻译）。
+  - **移动端底部导航栏（Mobile Bottom Navigation）**（index.html + style.css + ui.js）：
+    - `index.html` 新增 `#mobile-bottom-bar` 固定底栏，含四个按钮：`#mob-add`（＋ 新增）、`#mob-people`（👥 人员）、`#mob-tree`（🌳 族谱）、`#mob-timeline`（📅 时间轴）；同时新增 `#mob-panel-overlay` 遮罩 div；
+    - `style.css` 新增：`#mobile-bottom-bar`（固定底部 56px、白/暗色背景、顶部分隔线、box-shadow）；`.mob-bar-btn`（flex 竖排 icon + label、active 主色、tap 高亮）；`#mob-panel-overlay`（半透明黑色覆盖遮罩）；`@media (max-width: 640px)` 扩展：`display: flex` 显示底栏、`#layout` 底部 padding 56px 防遮挡、`#left-panel.mob-panel-open` 覆盖式侧滑面板（fixed + z-index + box-shadow）；
+    - `ui.js` `bindButtons()` 新增移动端按钮事件：`mob-add` → `showAddPersonModal`；`mob-people` → 切换 `#left-panel.mob-panel-open` 及遮罩显示；`mob-tree/mob-timeline` → 代理桌面视图切换按钮并更新 `.mob-view-btn.active` 状态；`#mob-panel-overlay` 点击 → 关闭面板；
+    - `i18n.js` 三语各新增 5 个键（`mob-add/people/tree/timeline/overlay-hint`，共 15 条翻译）。
+  - **打印样式更新**（style.css）：将 `#mobile-bottom-bar`、`#mob-panel-overlay`、`#batch-bar` 加入打印隐藏列表。
+- 下一步：
+  - 时间轴事件菱形点击弹出事件详情浮层
+  - 关系强度可视化（连线粗细/颜色随代际深度变化）
+  - 导出 PDF（@media print 强化或 jsPDF 离线库）
+  - 搜索支持拼音/汉字混合模糊匹配

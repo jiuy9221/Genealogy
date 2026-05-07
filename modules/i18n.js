@@ -187,7 +187,18 @@ const TRANSLATIONS = {
         "form-tags-placeholder": "用逗号分隔，如：军人, 商人, 学者",
         "editor-section-tags": "标签",
         "filter-all-tags": "所有标签",
-        "toast-tag-filter": "按标签筛选：{tag}"
+        "toast-tag-filter": "按标签筛选：{tag}",
+        "stats-surname-dist": "姓氏分布 Top 5",
+        "batch-selected": "{n} 人已选中",
+        "batch-delete": "批量删除",
+        "batch-export": "导出所选",
+        "batch-clear": "取消选中",
+        "toast-batch-deleted": "已删除 {n} 人",
+        "mob-add": "新增",
+        "mob-people": "人员",
+        "mob-tree": "族谱",
+        "mob-timeline": "时间轴",
+        "mob-overlay-hint": "点击空白处关闭"
     },
     "zh-TW": {
         "app-title": "族譜",
@@ -373,7 +384,18 @@ const TRANSLATIONS = {
         "form-tags-placeholder": "用逗號分隔，如：軍人, 商人, 學者",
         "editor-section-tags": "標籤",
         "filter-all-tags": "所有標籤",
-        "toast-tag-filter": "按標籤篩選：{tag}"
+        "toast-tag-filter": "按標籤篩選：{tag}",
+        "stats-surname-dist": "姓氏分布 Top 5",
+        "batch-selected": "{n} 人已選中",
+        "batch-delete": "批量刪除",
+        "batch-export": "匯出所選",
+        "batch-clear": "取消選中",
+        "toast-batch-deleted": "已刪除 {n} 人",
+        "mob-add": "新增",
+        "mob-people": "人員",
+        "mob-tree": "族譜",
+        "mob-timeline": "時間軸",
+        "mob-overlay-hint": "點擊空白處關閉"
     },
     "en": {
         "app-title": "Family Tree",
@@ -559,7 +581,18 @@ const TRANSLATIONS = {
         "form-tags-placeholder": "Comma-separated, e.g.: soldier, merchant, scholar",
         "editor-section-tags": "Tags",
         "filter-all-tags": "All Tags",
-        "toast-tag-filter": "Filtering by tag: {tag}"
+        "toast-tag-filter": "Filtering by tag: {tag}",
+        "stats-surname-dist": "Top 5 Surnames",
+        "batch-selected": "{n} selected",
+        "batch-delete": "Delete All",
+        "batch-export": "Export",
+        "batch-clear": "Deselect",
+        "toast-batch-deleted": "Deleted {n} people",
+        "mob-add": "Add",
+        "mob-people": "People",
+        "mob-tree": "Tree",
+        "mob-timeline": "Timeline",
+        "mob-overlay-hint": "Tap outside to close"
     }
 };
 

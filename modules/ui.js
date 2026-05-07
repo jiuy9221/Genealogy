@@ -5,6 +5,7 @@ let _selectedId = null;
 let _onDataChange = null;
 let _searchQuery = "";
 let _tagFilter = "";
+let _selectedIds = new Set();
 
 // Deterministic tag color from palette
 function _tagColor(tag) {
@@ -83,6 +84,40 @@ function bindButtons() {
     });
     document.getElementById("modal-close").addEventListener("click", closeModal);
     document.getElementById("modal-cancel").addEventListener("click", closeModal);
+
+    // ─── 移动端底部导航栏 ─────────────────────────────────────────────
+    const mobAdd      = document.getElementById("mob-add");
+    const mobPeople   = document.getElementById("mob-people");
+    const mobTree     = document.getElementById("mob-tree");
+    const mobTimeline = document.getElementById("mob-timeline");
+    const mobOverlay  = document.getElementById("mob-panel-overlay");
+
+    function _closeMobPanel() {
+        document.getElementById("left-panel")?.classList.remove("mob-panel-open");
+        mobPeople?.classList.remove("active");
+        if (mobOverlay) mobOverlay.style.display = "none";
+    }
+
+    if (mobAdd)      mobAdd.addEventListener("click", showAddPersonModal);
+    if (mobPeople)   mobPeople.addEventListener("click", () => {
+        const lp = document.getElementById("left-panel");
+        const open = lp?.classList.toggle("mob-panel-open");
+        mobPeople.classList.toggle("active", !!open);
+        if (mobOverlay) mobOverlay.style.display = open ? "block" : "none";
+    });
+    if (mobTree)     mobTree.addEventListener("click", () => {
+        document.getElementById("btn-view-tree")?.click();
+        document.querySelectorAll(".mob-view-btn").forEach(b => b.classList.remove("active"));
+        mobTree.classList.add("active");
+        _closeMobPanel();
+    });
+    if (mobTimeline) mobTimeline.addEventListener("click", () => {
+        document.getElementById("btn-view-timeline")?.click();
+        document.querySelectorAll(".mob-view-btn").forEach(b => b.classList.remove("active"));
+        mobTimeline.classList.add("active");
+        _closeMobPanel();
+    });
+    if (mobOverlay)  mobOverlay.addEventListener("click", _closeMobPanel);
 }
 
 // ─── 文件触发 & 导入 ──────────────────────────────────────────────────
@@ -237,10 +272,21 @@ function renderPersonList(data) {
             `<span class="person-tag-dot" style="background:${_tagColor(tag)}" title="${_escHtml(tag)}"></span>`
         ).join("");
         const tagDotsHtml = tagDots ? `<span class="person-tag-dots">${tagDots}</span>` : "";
+        if (_selectedIds.has(p.id)) li.classList.add("batch-selected");
         li.innerHTML = `<span class="person-name">${_searchQuery ? highlightMatch(p.name, _searchQuery) : _escHtml(p.name)}</span>${birthYr}${gTag}${tagDotsHtml}`;
-        li.addEventListener("click", () => selectPerson(p.id));
+        li.addEventListener("click", e => {
+            if (e.ctrlKey || e.metaKey) {
+                if (_selectedIds.has(p.id)) _selectedIds.delete(p.id);
+                else _selectedIds.add(p.id);
+                li.classList.toggle("batch-selected", _selectedIds.has(p.id));
+                _updateBatchBar();
+            } else {
+                selectPerson(p.id);
+            }
+        });
         list.appendChild(li);
     });
+    _updateBatchBar();
 }
 
 // 高亮搜索关键字
@@ -251,6 +297,66 @@ function highlightMatch(name, query) {
         `<mark>${name.slice(idx, idx + query.length)}</mark>` +
         name.slice(idx + query.length);
 }
+
+// ─── 批量选中操作栏 ──────────────────────────────────────────────────
+function _updateBatchBar() {
+    let bar = document.getElementById("batch-bar");
+    if (_selectedIds.size === 0) {
+        if (bar) bar.style.display = "none";
+        return;
+    }
+    if (!bar) {
+        bar = document.createElement("div");
+        bar.id = "batch-bar";
+        bar.className = "batch-bar";
+        document.getElementById("left-panel")?.appendChild(bar);
+    }
+    bar.style.display = "flex";
+    bar.innerHTML = `
+<span class="batch-count">${t("batch-selected").replace("{n}", _selectedIds.size)}</span>
+<div class="batch-btns">
+  <button class="btn-sm batch-btn-del" onclick="window.doBatchDelete()">🗑 ${_escHtml(t("batch-delete"))}</button>
+  <button class="btn-sm batch-btn-exp" onclick="window.doBatchExport()">⬇ ${_escHtml(t("batch-export"))}</button>
+  <button class="btn-sm batch-btn-clr" onclick="window.clearBatchSelection()">✕ ${_escHtml(t("batch-clear"))}</button>
+</div>`;
+}
+
+window.clearBatchSelection = function() {
+    _selectedIds.clear();
+    renderPersonList(_data);
+};
+
+window.doBatchDelete = function() {
+    if (_selectedIds.size === 0) return;
+    const n = _selectedIds.size;
+    if (!confirm(`确定要删除所选 ${n} 名成员？此操作不可撤销。`)) return;
+    _selectedIds.forEach(id => {
+        _data.persons = _data.persons.filter(p => p.id !== id);
+        _data.relationships = _data.relationships.filter(r => r.parent !== id && r.child !== id);
+        _data.marriages = _data.marriages.filter(m => m.spouse1 !== id && m.spouse2 !== id);
+    });
+    if (_selectedIds.has(_selectedId)) _selectedId = null;
+    _selectedIds.clear();
+    _onDataChange(_data);
+    showToast(t("toast-batch-deleted").replace("{n}", n));
+};
+
+window.doBatchExport = function() {
+    if (_selectedIds.size === 0) return;
+    const ids = _selectedIds;
+    const subset = {
+        persons: _data.persons.filter(p => ids.has(p.id)),
+        relationships: _data.relationships.filter(r => ids.has(r.parent) && ids.has(r.child)),
+        marriages: _data.marriages.filter(m => ids.has(m.spouse1) && ids.has(m.spouse2))
+    };
+    const blob = new Blob([JSON.stringify(subset, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `family_subset_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast(t("toast-json-exported"));
+};
 
 // ─── 选中人员 ─────────────────────────────────────────────────────────
 function selectPerson(id) {
@@ -665,6 +771,7 @@ function showStatsModal() {
   ${_buildGenderPie(s)}
   ${_buildGenBar(_data)}
   ${_buildBirthDecadeHistogram(_data)}
+  ${_buildSurnameChart(_data)}
 </div>
 ${s.maxChildrenPerson ? `
 <div class="stats-highlight">
@@ -828,6 +935,44 @@ function _buildBirthDecadeHistogram(data) {
   <div class="birth-hist-scroll">
     <svg width="${totalW}" height="${svgH}" viewBox="0 0 ${totalW} ${svgH}" class="birth-hist-svg">${bars}</svg>
   </div>
+</div>`;
+}
+
+// ─── 统计图表：姓氏分布 Top 5 ──────────────────────────────────────────
+function _buildSurnameChart(data) {
+    if (data.persons.length < 2) return "";
+    const counts = {};
+    data.persons.forEach(p => {
+        if (!p.name) return;
+        const c = p.name.charCodeAt(0);
+        const isCJK = (c >= 0x4E00 && c <= 0x9FFF) || (c >= 0x3400 && c <= 0x4DBF);
+        const surname = isCJK ? p.name.charAt(0) : (p.name.split(/\s+/)[0] || p.name.charAt(0));
+        counts[surname] = (counts[surname] || 0) + 1;
+    });
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    if (sorted.length < 2) return "";
+
+    const dark = document.body.classList.contains("dark-mode");
+    const maxCount = sorted[0][1];
+    const BAR_H = 20, GAP = 8, LABEL_W = 38, NUM_W = 28, BAR_MAX_W = 160, PAD_V = 2;
+    const svgW = LABEL_W + BAR_MAX_W + NUM_W + 8;
+    const svgH = sorted.length * (BAR_H + GAP) - GAP + PAD_V * 2;
+    const textFill = dark ? "#e2e8f0" : "#1e293b";
+    const muteFill = dark ? "#64748b" : "#94a3b8";
+    const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+
+    let bars = "";
+    sorted.forEach(([name, count], i) => {
+        const y  = PAD_V + i * (BAR_H + GAP);
+        const bw = Math.max(4, Math.round(count / maxCount * BAR_MAX_W));
+        bars += `<text x="${LABEL_W - 4}" y="${y + BAR_H * 0.72}" text-anchor="end" font-size="12" fill="${textFill}">${_escHtml(name)}</text>`;
+        bars += `<rect x="${LABEL_W}" y="${y}" width="${bw}" height="${BAR_H}" rx="3" fill="${COLORS[i]}" opacity="0.85"/>`;
+        bars += `<text x="${LABEL_W + bw + 5}" y="${y + BAR_H * 0.72}" font-size="11" fill="${muteFill}">${count}</text>`;
+    });
+
+    return `<div class="chart-section">
+  <div class="chart-title">${t("stats-surname-dist")}</div>
+  <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" class="surname-chart-svg">${bars}</svg>
 </div>`;
 }
 

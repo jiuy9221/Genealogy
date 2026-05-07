@@ -139,6 +139,28 @@
     <span class="legend-item kbd" data-i18n="legend-shortcuts">+/- 缩放 &nbsp; F 适应 &nbsp; T 切换视图 &nbsp; G 聚焦 &nbsp; D 暗色 &nbsp; 0 重置 &nbsp; 右键节点菜单</span>
 </div>
 
+<!-- 移动端底部导航栏（仅 ≤640px 显示） -->
+<div id="mobile-bottom-bar">
+    <button class="mob-bar-btn" id="mob-add">
+        <span class="mob-bar-icon">&#43;</span>
+        <span class="mob-bar-label" data-i18n="mob-add">新增</span>
+    </button>
+    <button class="mob-bar-btn" id="mob-people">
+        <span class="mob-bar-icon">&#128101;</span>
+        <span class="mob-bar-label" data-i18n="mob-people">人员</span>
+    </button>
+    <button class="mob-bar-btn mob-view-btn active" id="mob-tree">
+        <span class="mob-bar-icon">&#127795;</span>
+        <span class="mob-bar-label" data-i18n="mob-tree">族谱</span>
+    </button>
+    <button class="mob-bar-btn mob-view-btn" id="mob-timeline">
+        <span class="mob-bar-icon">&#128197;</span>
+        <span class="mob-bar-label" data-i18n="mob-timeline">时间轴</span>
+    </button>
+</div>
+<!-- 移动端左侧面板遮罩 -->
+<div id="mob-panel-overlay"></div>
+
 <script src="modules/i18n.js"></script>
 <script src="modules/data.js"></script>
 <script src="modules/tree.js"></script>
