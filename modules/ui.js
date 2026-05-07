@@ -249,10 +249,17 @@ function renderPersonList(data) {
 
     let persons = data.persons;
     if (_searchQuery) {
+        const qNum = parseInt(_searchQuery);
         persons = persons.filter(p => {
             if (p.name.toLowerCase().includes(_searchQuery)) return true;
-            const initials = getPinyinInitials(p.name);
-            return initials.includes(_searchQuery);
+            if (getPinyinInitials(p.name).includes(_searchQuery)) return true;
+            // 出生年匹配（纯数字查询）
+            if (!isNaN(qNum) && p.birth && p.birth.includes(_searchQuery)) return true;
+            // 备注模糊匹配
+            if (p.notes && p.notes.toLowerCase().includes(_searchQuery)) return true;
+            // 标签名匹配
+            if ((p.tags || []).some(tag => tag.toLowerCase().includes(_searchQuery))) return true;
+            return false;
         });
     }
     if (_tagFilter) {
@@ -409,6 +416,8 @@ function _updateBatchBar() {
 <span class="batch-count">${t("batch-selected").replace("{n}", _selectedIds.size)}</span>
 <div class="batch-btns">
   <button class="btn-sm batch-btn-del" onclick="window.doBatchDelete()">🗑 ${_escHtml(t("batch-delete"))}</button>
+  <button class="btn-sm batch-btn-tag" onclick="window.doBatchAddTag()">🏷 ${_escHtml(t("batch-add-tag"))}</button>
+  <button class="btn-sm batch-btn-rmtag" onclick="window.doBatchRemoveTag()">× ${_escHtml(t("batch-remove-tag"))}</button>
   <button class="btn-sm batch-btn-exp" onclick="window.doBatchExport()">⬇ ${_escHtml(t("batch-export"))}</button>
   <button class="btn-sm batch-btn-clr" onclick="window.clearBatchSelection()">✕ ${_escHtml(t("batch-clear"))}</button>
 </div>`;
@@ -449,6 +458,48 @@ window.doBatchExport = function() {
     a.click();
     URL.revokeObjectURL(a.href);
     showToast(t("toast-json-exported"));
+};
+
+window.doBatchAddTag = function() {
+    if (_selectedIds.size === 0) return;
+    const tagVal = (prompt(t("batch-tag-prompt"), "") || "").trim();
+    if (!tagVal) return;
+    let added = 0;
+    _selectedIds.forEach(id => {
+        const p = _data.persons.find(x => x.id === id);
+        if (!p) return;
+        if (!p.tags) p.tags = [];
+        if (!p.tags.includes(tagVal)) { p.tags.push(tagVal); added++; }
+    });
+    if (added > 0) {
+        _onDataChange(_data);
+        showToast(t("toast-batch-tag-added").replace("{n}", added).replace("{tag}", tagVal));
+    }
+};
+
+window.doBatchRemoveTag = function() {
+    if (_selectedIds.size === 0) return;
+    const tagCounts = {};
+    _selectedIds.forEach(id => {
+        const p = _data.persons.find(x => x.id === id);
+        (p?.tags || []).forEach(tag => { tagCounts[tag] = (tagCounts[tag] || 0) + 1; });
+    });
+    const existingTags = Object.keys(tagCounts).sort();
+    if (!existingTags.length) { showToast(t("toast-no-tags")); return; }
+    const tagVal = (prompt(t("batch-remove-tag-prompt") + "\n" + existingTags.join(", "), existingTags[0] || "") || "").trim();
+    if (!tagVal) return;
+    let removed = 0;
+    _selectedIds.forEach(id => {
+        const p = _data.persons.find(x => x.id === id);
+        if (!p || !p.tags) return;
+        const before = p.tags.length;
+        p.tags = p.tags.filter(tg => tg !== tagVal);
+        if (p.tags.length < before) removed++;
+    });
+    if (removed > 0) {
+        _onDataChange(_data);
+        showToast(t("toast-batch-tag-removed").replace("{n}", removed).replace("{tag}", tagVal));
+    }
 };
 
 // ─── 选中人员 ─────────────────────────────────────────────────────────

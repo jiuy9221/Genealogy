@@ -168,3 +168,35 @@ Value: JSON.stringify({ persons, relationships, marriages })
 
 Key: `genealogy_lang`
 Value: "zh-CN" | "zh-TW" | "en"（语言偏好）
+
+## 功能扩展（v10，2026-05-07 第五次推进）
+
+### 族谱树横向布局（LR Layout）
+- `tree.js` 新增 `_layoutDir = "TB" | "LR"` 模块状态变量
+- `window.setTreeLayoutDir(dir)` / `window.getTreeLayoutDir()` 暴露给外部
+- `_posToLR(rawPos, levelMap)` 坐标变换函数：将 TB 布局坐标转为 LR（generation→x, x→y）
+  - `lr_x = level * LR_X_STEP`（LR_X_STEP = NODE_W + V_GAP = 248px）
+  - `lr_y = TB_x`（原水平位置成为 LR 模式的垂直位置）
+- `_renderConnectionsLR(data, gLines, nodePositions, parentsOf, levelMap)` LR 连线渲染：
+  - 配偶对（无子女）：垂直虚线连接（spouses stacked vertically）
+  - 双亲 → 子女：parents 右侧出发 → 垂直 coupling 竖线 → 水平线 → child 横向汇聚 → 各子女
+  - 单亲：S 形折线（右出 → 水平中点 → 垂直 → 水平 → 子女左侧）
+- `renderTree` 根据 `_layoutDir` 分支：选择位置变换、连线渲染、代际条带方向（LR 为垂直条带）、标签位置（LR 顶部）
+- `_appendCollapseToggle` LR 模式下折叠按钮位于节点右侧中央（而非底部）
+- 键盘快捷键 `L`：在族谱树视图中切换布局方向（`setupKeyboard` 中注册）
+- `app.js` `setupExtraButtons` 注册 `#btn-layout-dir` 按钮，切换时清除拖拽偏移并自动适应视口
+
+### 批量标签管理（Batch Tag Management）
+- `ui.js` `_updateBatchBar` 扩展：新增「🏷 加标签」和「× 移标签」两个按钮
+- `window.doBatchAddTag()`: prompt 输入标签名 → 为所有选中成员追加（已有则跳过）
+- `window.doBatchRemoveTag()`: 统计选中成员现有标签 → prompt 展示并输入要移除的标签名 → 批量移除
+- `style.css` 新增 `.batch-btn-tag`（amber）、`.batch-btn-rmtag`（gray）两种按钮样式
+
+### 搜索增强（Extended Search）
+- `ui.js` `renderPersonList` 搜索逻辑扩展为五维匹配：
+  1. 姓名字符串包含（原有）
+  2. 拼音首字母（原有）
+  3. 出生年份包含（数字字符串匹配）
+  4. 备注文本包含（.notes 字段）
+  5. 标签名包含（.tags 数组任意项）
+- i18n.js 三语搜索占位符更新为「搜索姓名/备注/标签/年份…」

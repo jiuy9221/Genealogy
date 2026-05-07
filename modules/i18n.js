@@ -23,7 +23,7 @@ const TRANSLATIONS = {
         "btn-zoom-reset-title": "重置 (0)",
         "btn-zoom-out-title": "缩小 (-)",
         "panel-people": "人员列表",
-        "search-placeholder": "🔍 搜索姓名…",
+        "search-placeholder": "🔍 搜索姓名/备注/标签/年份…",
         "panel-info": "人员信息",
         "legend-male": "■ 男性",
         "legend-female": "■ 女性",
@@ -239,7 +239,18 @@ const TRANSLATIONS = {
         "marriage-year-ph": "婚年",
         "marriage-year-edit-btn": "编辑婚年",
         "marriage-year-prompt": "输入结婚年份（如 1985），留空则清除",
-        "toast-marriage-year-saved": "婚姻年份已保存"
+        "toast-marriage-year-saved": "婚姻年份已保存",
+        "btn-layout-lr": "↔ 横向",
+        "btn-layout-tb": "↕ 纵向",
+        "toast-layout-lr": "已切换为横向布局（左→右）",
+        "toast-layout-tb": "已切换为纵向布局（上→下）",
+        "batch-add-tag": "🏷 加标签",
+        "batch-remove-tag": "× 移标签",
+        "batch-tag-prompt": "输入要批量添加的标签名：",
+        "batch-remove-tag-prompt": "已有标签，输入要移除的标签名：",
+        "toast-batch-tag-added": "已为 {n} 人添加标签「{tag}」",
+        "toast-batch-tag-removed": "已从 {n} 人移除标签「{tag}」",
+        "toast-no-tags": "所选成员无标签可移除"
     },
     "zh-TW": {
         "app-title": "族譜",
@@ -261,7 +272,7 @@ const TRANSLATIONS = {
         "btn-zoom-reset-title": "重置 (0)",
         "btn-zoom-out-title": "縮小 (-)",
         "panel-people": "人員列表",
-        "search-placeholder": "🔍 搜尋姓名…",
+        "search-placeholder": "🔍 搜尋姓名/備註/標籤/年份…",
         "panel-info": "人員資訊",
         "legend-male": "■ 男性",
         "legend-female": "■ 女性",
@@ -477,7 +488,18 @@ const TRANSLATIONS = {
         "marriage-year-ph": "婚年",
         "marriage-year-edit-btn": "編輯婚年",
         "marriage-year-prompt": "輸入結婚年份（如 1985），留空則清除",
-        "toast-marriage-year-saved": "婚姻年份已儲存"
+        "toast-marriage-year-saved": "婚姻年份已儲存",
+        "btn-layout-lr": "↔ 橫向",
+        "btn-layout-tb": "↕ 縱向",
+        "toast-layout-lr": "已切換為橫向佈局（左→右）",
+        "toast-layout-tb": "已切換為縱向佈局（上→下）",
+        "batch-add-tag": "🏷 加標籤",
+        "batch-remove-tag": "× 移標籤",
+        "batch-tag-prompt": "輸入要批量添加的標籤名：",
+        "batch-remove-tag-prompt": "已有標籤，輸入要移除的標籤名：",
+        "toast-batch-tag-added": "已為 {n} 人添加標籤「{tag}」",
+        "toast-batch-tag-removed": "已從 {n} 人移除標籤「{tag}」",
+        "toast-no-tags": "所選成員無標籤可移除"
     },
     "en": {
         "app-title": "Family Tree",
@@ -499,7 +521,7 @@ const TRANSLATIONS = {
         "btn-zoom-reset-title": "Reset zoom (0)",
         "btn-zoom-out-title": "Zoom out (-)",
         "panel-people": "People",
-        "search-placeholder": "🔍 Search name…",
+        "search-placeholder": "🔍 Search name / notes / tag / year…",
         "panel-info": "Person Info",
         "legend-male": "■ Male",
         "legend-female": "■ Female",
@@ -715,7 +737,18 @@ const TRANSLATIONS = {
         "marriage-year-ph": "Year",
         "marriage-year-edit-btn": "Edit Year",
         "marriage-year-prompt": "Enter marriage year (e.g. 1985), leave blank to clear",
-        "toast-marriage-year-saved": "Marriage year saved"
+        "toast-marriage-year-saved": "Marriage year saved",
+        "btn-layout-lr": "↔ Horizontal",
+        "btn-layout-tb": "↕ Vertical",
+        "toast-layout-lr": "Switched to left→right layout",
+        "toast-layout-tb": "Switched to top→bottom layout",
+        "batch-add-tag": "🏷 Add Tag",
+        "batch-remove-tag": "× Rm Tag",
+        "batch-tag-prompt": "Enter tag name to add to selected persons:",
+        "batch-remove-tag-prompt": "Existing tags — enter one to remove:",
+        "toast-batch-tag-added": "Added tag '{tag}' to {n} persons",
+        "toast-batch-tag-removed": "Removed tag '{tag}' from {n} persons",
+        "toast-no-tags": "No tags found on selected persons"
     }
 };
 

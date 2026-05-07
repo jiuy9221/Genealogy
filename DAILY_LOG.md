@@ -412,3 +412,32 @@
   - 搜索框支持完整拼音匹配（py-pinyin 轻量字库）
   - 族谱树横向布局模式（左→右）切换
   - 批量标签管理（为多个成员同时添加/移除标签）
+
+## 2026-05-07 (第五次推进)
+- 更新文件：modules/tree.js、modules/ui.js、modules/i18n.js、style.css、index.html、app.js、architecture.md
+- 新增功能：
+  - **族谱树横向布局（LR Layout）**（tree.js + index.html + app.js + style.css + i18n.js）：
+    - `tree.js` 新增 `_layoutDir = "TB" | "LR"` 模块状态变量；`window.setTreeLayoutDir(dir)` / `window.getTreeLayoutDir()` 暴露给外部调用；
+    - `_posToLR(rawPos, levelMap)` 坐标变换：`lr_x = level * LR_X_STEP`（248px/代）、`lr_y = TB_x`（原水平位置成为垂直轴）；
+    - `_renderConnectionsLR(...)` LR 连线渲染函数：配偶对无子女时画垂直虚线；双亲对有子女时画「右出 → 垂直 coupling 竖线 → 水平 → 垂直子女汇聚线 → 各子女」；单亲时画折线肘形连接；
+    - `renderTree` 根据 `_layoutDir` 分支：LR 模式使用 `_posToLR` 变换坐标、`_renderConnectionsLR` 渲染连线、垂直条带背景（每代一列）、顶部代际标签；
+    - `_appendCollapseToggle` LR 模式下折叠按钮位于节点右侧中央（ ◀ / ▶ 符号）；
+    - `index.html` 顶栏新增 `#btn-layout-dir`（「↔ 横向」）按钮；
+    - `app.js` `setupExtraButtons` 注册按钮事件（切换时清除拖拽偏移 + 自动适应视口），`setupKeyboard` 注册 `L` 键快捷键；
+    - `style.css` 新增 `.btn-layout-dir` 20 条样式规则（亮/暗主题、active 态高亮）；
+    - `i18n.js` 三语各新增 4 个键（`btn-layout-lr/tb`、`toast-layout-lr/tb`，共 12 条）。
+  - **批量标签管理（Batch Tag Management）**（ui.js + style.css + i18n.js）：
+    - `_updateBatchBar` 扩展：新增「🏷 加标签」和「× 移标签」按钮（amber 和 gray 样式）；
+    - `window.doBatchAddTag()`：prompt 输入标签名 → 为所有选中成员追加（已有则跳过）→ 触发 `_onDataChange` → Toast 显示添加人数；
+    - `window.doBatchRemoveTag()`：统计选中成员现有标签 → prompt 展示并输入要移除的标签 → 批量移除 → Toast 显示移除人数；无标签时 Toast 提示；
+    - `style.css` 新增 `.batch-btn-tag`（amber）、`.batch-btn-rmtag`（gray）2 条规则；
+    - `i18n.js` 三语各新增 7 个键（`batch-add-tag`/`batch-remove-tag`/`batch-tag-prompt`/`batch-remove-tag-prompt`/`toast-batch-tag-added`/`toast-batch-tag-removed`/`toast-no-tags`，共 21 条）。
+  - **搜索增强（Extended Search）**（ui.js + i18n.js + index.html）：
+    - `renderPersonList` 搜索逻辑扩展为五维匹配：①姓名字符串 ②拼音首字母 ③出生年份 ④备注文本 ⑤标签名；
+    - `i18n.js` 三语搜索占位符更新为「搜索姓名/备注/标签/年份…」；
+    - `index.html` 默认 placeholder 同步更新。
+- 下一步：
+  - 族谱树 LR 布局横向节点选中指示（聚焦高亮）精细优化
+  - 节点批量移动（拖选多节点同步平移）
+  - 导出 PDF（@media print 增强或 jsPDF）
+  - 人员合并功能（将两个重复条目合并为一个）

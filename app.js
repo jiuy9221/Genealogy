@@ -414,6 +414,9 @@ function setupKeyboard() {
                 if (_focusMode) window.exitFocusMode();
                 else if (_focusPersonId) window.enterFocusMode(_focusPersonId);
             }
+            if (e.key === "l" || e.key === "L") {
+                if (_viewMode === "tree") document.getElementById("btn-layout-dir")?.click();
+            }
         }
     });
 }
@@ -424,6 +427,23 @@ function setupExtraButtons() {
     const hcBtn = document.getElementById("btn-health-check");
     if (hcBtn) hcBtn.addEventListener("click", () => window.showHealthCheckModal && window.showHealthCheckModal());
     document.getElementById("btn-export-png").addEventListener("click", exportTreeAsPNG);
+
+    // ─── 布局方向切换（TB ↔ LR）──────────────────────────────────────────
+    const layoutBtn = document.getElementById("btn-layout-dir");
+    if (layoutBtn) {
+        layoutBtn.addEventListener("click", () => {
+            const newDir = window.getTreeLayoutDir() === "TB" ? "LR" : "TB";
+            window.setTreeLayoutDir(newDir);
+            layoutBtn.textContent = newDir === "LR" ? t("btn-layout-tb") : t("btn-layout-lr");
+            layoutBtn.classList.toggle("layout-lr-active", newDir === "LR");
+            clearCustomOffsets();
+            saveDragOffsets();
+            _didInitialFit = false;
+            refreshTreeOnly();
+            requestAnimationFrame(() => { autoFitTree(); _didInitialFit = true; });
+            showToast(newDir === "LR" ? t("toast-layout-lr") : t("toast-layout-tb"));
+        });
+    }
     document.getElementById("btn-fit-view").addEventListener("click", autoFitTree);
     document.getElementById("btn-share").addEventListener("click", generateShareLink);
     document.getElementById("btn-print").addEventListener("click", () => {

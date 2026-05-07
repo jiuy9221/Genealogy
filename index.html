@@ -35,6 +35,7 @@
             <button class="view-toggle-btn active" id="btn-view-tree"     data-i18n="btn-view-tree">🌳 族谱树</button>
             <button class="view-toggle-btn"        id="btn-view-timeline" data-i18n="btn-view-timeline">📅 时间轴</button>
         </div>
+        <button class="btn-toolbar btn-layout-dir" id="btn-layout-dir" data-i18n="btn-layout-lr" title="切换布局方向 (L)">↔ 横向</button>
         <span class="sep"></span>
         <button class="btn-toolbar btn-dark-mode" id="btn-dark-mode" title="切换暗色主题 (D)">🌙 暗色</button>
         <!-- 语言切换 -->
@@ -85,7 +86,7 @@
         <div id="search-bar">
             <input type="search" id="person-search"
                    data-i18n="search-placeholder"
-                   placeholder="🔍 搜索姓名…" autocomplete="off" />
+                   placeholder="🔍 搜索姓名/备注/标签/年份…" autocomplete="off" />
             <div id="search-count" class="search-count" style="display:none;"></div>
             <select id="tag-filter" class="tag-filter-select" title="按标签筛选">
                 <option value="" data-i18n="filter-all-tags">所有标签</option>
