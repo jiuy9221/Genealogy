@@ -121,7 +121,7 @@ function exportMarkdown(data) {
     data.marriages.forEach(m => {
         const s1 = data.persons.find(x => x.id === m.spouse1);
         const s2 = data.persons.find(x => x.id === m.spouse2);
-        if (s1 && s2) md += `- ${s1.name} ⚭ ${s2.name}\n`;
+        if (s1 && s2) md += `- ${s1.name} ⚭ ${s2.name}${m.year ? ` (${m.year})` : ""}\n`;
     });
     const blob = new Blob([md], { type: "text/markdown" });
     downloadBlob(blob, "family.md");
@@ -171,11 +171,15 @@ function parseMarkdown(text) {
     const marSection = text.match(/## 婚姻关系\n([\s\S]*?)(?=\n##|$)/);
     if (marSection) {
         marSection[1].split("\n").forEach(line => {
-            const m = line.match(/- (.+?) ⚭ (.+)/);
+            const m = line.match(/- (.+?) ⚭ (.+?)(?:\s*\((\d{1,4})\))?$/);
             if (m) {
                 const s1 = data.persons.find(x => x.name === m[1].trim());
                 const s2 = data.persons.find(x => x.name === m[2].trim());
-                if (s1 && s2) data.marriages.push({ spouse1: s1.id, spouse2: s2.id });
+                if (s1 && s2) {
+                    const rec = { spouse1: s1.id, spouse2: s2.id };
+                    if (m[3]) rec.year = m[3];
+                    data.marriages.push(rec);
+                }
             }
         });
     }
@@ -228,12 +232,27 @@ function addRelationship(data, parentId, childId) {
     if (!exists) data.relationships.push({ parent: parentId, child: childId });
 }
 
-function addMarriage(data, spouse1Id, spouse2Id) {
+function addMarriage(data, spouse1Id, spouse2Id, year) {
     const exists = data.marriages.some(m =>
         (m.spouse1 === spouse1Id && m.spouse2 === spouse2Id) ||
         (m.spouse1 === spouse2Id && m.spouse2 === spouse1Id)
     );
-    if (!exists) data.marriages.push({ spouse1: spouse1Id, spouse2: spouse2Id });
+    if (!exists) {
+        const rec = { spouse1: spouse1Id, spouse2: spouse2Id };
+        if (year) rec.year = String(year).trim();
+        data.marriages.push(rec);
+    }
+}
+
+function updateMarriageYear(data, s1, s2, year) {
+    const m = data.marriages.find(m =>
+        (m.spouse1 === s1 && m.spouse2 === s2) ||
+        (m.spouse1 === s2 && m.spouse2 === s1)
+    );
+    if (!m) return false;
+    if (year) m.year = String(year).trim();
+    else delete m.year;
+    return true;
 }
 
 function removeRelationship(data, parentId, childId) {
@@ -451,4 +470,70 @@ function computeStats(data) {
     const oldest = withBirth.slice().sort((a, b) => parseInt(a.birth) - parseInt(b.birth))[0] || null;
 
     return { total, males, females, unknown, generations, marriages, avgLifespan, maxChildrenPerson, maxChildren, oldest };
+}
+
+// ─── 数据健康检查 ─────────────────────────────────────────────────────────────
+function dataHealthCheck(data) {
+    const issues = [];
+    const now = new Date().getFullYear();
+
+    // 重名
+    const nameCounts = {};
+    data.persons.forEach(p => {
+        if (!p.name) return;
+        nameCounts[p.name] = nameCounts[p.name] || [];
+        nameCounts[p.name].push(p.id);
+    });
+    Object.entries(nameCounts).forEach(([name, ids]) => {
+        if (ids.length > 1)
+            issues.push({ code: "duplicate-name", severity: "warning", ids, name });
+    });
+
+    // 死亡年 ≤ 出生年
+    data.persons.forEach(p => {
+        if (!p.birth || !p.death) return;
+        const b = parseInt(p.birth), d = parseInt(p.death);
+        if (!isNaN(b) && !isNaN(d) && d <= b)
+            issues.push({ code: "death-before-birth", severity: "error", ids: [p.id], name: p.name });
+    });
+
+    // 出生年在未来
+    data.persons.forEach(p => {
+        if (!p.birth) return;
+        const b = parseInt(p.birth);
+        if (!isNaN(b) && b > now + 1)
+            issues.push({ code: "future-birth", severity: "warning", ids: [p.id], name: p.name });
+    });
+
+    // 出生 >130 年前无死亡记录
+    data.persons.forEach(p => {
+        if (!p.birth || p.death) return;
+        const b = parseInt(p.birth);
+        if (!isNaN(b) && now - b > 130)
+            issues.push({ code: "likely-deceased", severity: "info", ids: [p.id], name: p.name });
+    });
+
+    // 孤立成员（无任何关系）
+    data.persons.forEach(p => {
+        const connected =
+            data.relationships.some(r => r.parent === p.id || r.child === p.id) ||
+            data.marriages.some(m => m.spouse1 === p.id || m.spouse2 === p.id);
+        if (!connected)
+            issues.push({ code: "isolated", severity: "info", ids: [p.id], name: p.name });
+    });
+
+    // 父母出生年晚于子女
+    data.relationships.forEach(r => {
+        const parent = data.persons.find(p => p.id === r.parent);
+        const child  = data.persons.find(p => p.id === r.child);
+        if (!parent?.birth || !child?.birth) return;
+        const pb = parseInt(parent.birth), cb = parseInt(child.birth);
+        if (!isNaN(pb) && !isNaN(cb) && pb >= cb)
+            issues.push({
+                code: "parent-born-after-child", severity: "warning",
+                ids: [parent.id, child.id], name: `${parent.name} → ${child.name}`
+            });
+    });
+
+    return issues;
 }

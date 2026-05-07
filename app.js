@@ -102,6 +102,8 @@ window.onload = async () => {
     setupLangSwitcher();
     setupFileManager();
     setupFocusBanner();
+    // 折叠子树变更 → 刷新树视图
+    window._onCollapseChange = refreshTreeOnly;
 };
 
 // ─── 解析 URL hash 分享数据 ────────────────────────────────────────
@@ -419,6 +421,8 @@ function setupKeyboard() {
 // ─── 额外按钮绑定 ──────────────────────────────────────────────────────────
 function setupExtraButtons() {
     document.getElementById("btn-stats").addEventListener("click", showStatsModal);
+    const hcBtn = document.getElementById("btn-health-check");
+    if (hcBtn) hcBtn.addEventListener("click", () => window.showHealthCheckModal && window.showHealthCheckModal());
     document.getElementById("btn-export-png").addEventListener("click", exportTreeAsPNG);
     document.getElementById("btn-fit-view").addEventListener("click", autoFitTree);
     document.getElementById("btn-share").addEventListener("click", generateShareLink);

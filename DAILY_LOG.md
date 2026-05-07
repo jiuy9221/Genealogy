@@ -379,3 +379,36 @@
   - 关系路径查找（两人之间最短亲属路径）
   - 人员列表按年龄/代际/性别多维度排序
   - 节点批量移动（拖选多节点同步平移）
+
+## 2026-05-07 (第四次推进)
+- 更新文件：modules/tree.js、modules/data.js、modules/ui.js、modules/i18n.js、style.css、index.html、app.js
+- 新增功能：
+  - **子树折叠/展开（Subtree Collapse/Expand）**（tree.js）：
+    - 新增模块级 `_collapsedSet`（Set）追踪已折叠节点；
+    - 新增 `_getDescendants(data, rootId)` BFS 辅助函数，返回某节点所有后代 ID 集合；
+    - `renderTree` 在布局前计算 `activeCollapsed` 与 `hiddenIds`，将可见子集 `visData` 传入 `buildTreeLayout` 与 `renderConnections`，折叠节点的所有后代不参与布局；
+    - 新增 `_appendCollapseToggle(nodeGroup, id, isCollapsed, data)` 函数：在有子代的节点底部中央绘制圆形 ▼/▶ 切换按钮（展开态靛蓝色、折叠态琥珀色）；折叠时同时渲染黄色 "+N" 徽章显示隐藏节点数；
+    - 右键快捷菜单增加「折叠子树 ▼」/「展开子树 ▶」选项（仅有子代时显示）；菜单点击事件处理 `collapse` 动作；
+    - 暴露 `window.toggleCollapseNode(id)`、`window.clearAllCollapsed()` 供外部调用；
+    - `app.js` 注册 `window._onCollapseChange = refreshTreeOnly` 确保折叠状态变更后立即刷新树；
+    - `i18n.js` 三语各新增 2 个键（`ctx-collapse`/`ctx-expand`，共 6 条）；
+    - `style.css` 新增 `.collapse-toggle` hover 动效规则（3 条）。
+  - **数据健康检查（Data Health Check）**（data.js + ui.js + index.html + style.css + i18n.js）：
+    - `data.js` 新增 `dataHealthCheck(data)` 函数，检测六类问题：重名成员（warning）、死亡年 ≤ 出生年（error）、出生年在未来（warning）、超龄未记录死亡（info）、孤立成员（info）、父母出生年晚于子女（warning）；每条 issue 含 `code/severity/ids/name`；
+    - `ui.js` 新增 `showHealthCheckModal()` / `window.showHealthCheckModal`：零问题时显示绿色「✅ 检查通过」；有问题时按 error/warning/info 分组展示，每行含「查看」按钮（点击跳转选中对应人员并关闭弹窗）；
+    - `index.html` 统计按钮右侧新增 `#btn-health-check`（绿色调 `.btn-health`）；
+    - `app.js` `setupExtraButtons()` 注册 `btn-health-check` 点击事件；
+    - `ui.js` `bindButtons()` 亦注册（双保险）；
+    - `style.css` 新增 25 条规则：`.btn-health`（亮/暗）、`.health-ok`、`.health-summary`、`.health-pill.error/warning/info`（亮/暗）、`.health-group`、`.health-group-header`、`.health-sev-badge.*`（亮/暗）、`.health-item-row`、`.health-goto-btn`（亮/暗）；
+    - `i18n.js` 三语各新增 16 个键（共 48 条翻译）。
+  - **婚姻年份字段（Marriage Year）**（data.js + ui.js + style.css + i18n.js）：
+    - `data.js` `addMarriage(data, s1, s2, year)` 新增可选 `year` 参数，保存到 `marriage.year`；新增 `updateMarriageYear(data, s1, s2, year)` 函数（存在则更新，传 null/空则删除）；
+    - Markdown 导出：婚姻行追加 ` (年份)` 如 `张三 ⚭ 李四 (1985)`；Markdown 导入正则扩展为 `/- (.+?) ⚭ (.+?)(?:\s*\((\d{1,4})\))?$/`，捕获并保存婚年；
+    - `ui.js` 配偶列表行改为 `spouseRecords`（含 marriage 记录），有婚年时显示 `<span class="marriage-year-badge">⚭ 年份</span>`，每行新增 ⚭ 编辑按钮（调用 `doEditMarriageYear`，prompt 弹窗设置/清除婚年）；添加配偶行新增 `#inp-marriage-year` 年份输入框；`doAddSpouse` 传入 year；
+    - `style.css` 新增 8 条规则（`.marriage-year-badge`、`.marriage-year-input`、`.marriage-add-row`、`.btn-muted`，亮/暗各适配）；
+    - `i18n.js` 三语各新增 4 个键（共 12 条翻译）。
+- 下一步：
+  - 关系类型扩展（兄弟/姐妹/祖父母等显式类型标注）
+  - 搜索框支持完整拼音匹配（py-pinyin 轻量字库）
+  - 族谱树横向布局模式（左→右）切换
+  - 批量标签管理（为多个成员同时添加/移除标签）

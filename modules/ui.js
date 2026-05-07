@@ -77,6 +77,8 @@ function bindBirthYearFilter() {
 
 function bindButtons() {
     document.getElementById("btn-add-person").addEventListener("click", showAddPersonModal);
+    const hcBtn = document.getElementById("btn-health-check");
+    if (hcBtn) hcBtn.addEventListener("click", showHealthCheckModal);
     document.getElementById("btn-export-json").addEventListener("click", () => { exportJSON(_data); showToast(t("toast-json-exported")); });
     document.getElementById("btn-export-md").addEventListener("click",   () => { exportMarkdown(_data); showToast(t("toast-md-exported")); });
     document.getElementById("btn-import-json").addEventListener("click", () => triggerFileInput("application/json", importJSONWithDialog));
@@ -467,10 +469,15 @@ function renderPersonEditor(id) {
 
     const parents  = _data.relationships.filter(r => r.child === id).map(r => _data.persons.find(x => x.id === r.parent)).filter(Boolean);
     const children = _data.relationships.filter(r => r.parent === id).map(r => _data.persons.find(x => x.id === r.child)).filter(Boolean);
-    const spouses  = _data.marriages
+    const spouseRecords = _data.marriages
         .filter(m => m.spouse1 === id || m.spouse2 === id)
-        .map(m => _data.persons.find(x => x.id === (m.spouse1 === id ? m.spouse2 : m.spouse1)))
+        .map(m => {
+            const spId = m.spouse1 === id ? m.spouse2 : m.spouse1;
+            const sp = _data.persons.find(x => x.id === spId);
+            return sp ? { person: sp, marriage: m } : null;
+        })
         .filter(Boolean);
+    const spouses = spouseRecords.map(r => r.person);
 
     const otherOptions = _data.persons.filter(x => x.id !== id)
         .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"))
@@ -559,12 +566,20 @@ ${pathHtml}
 </div>
 
 <div class="editor-section">
-  <h5>${t("editor-section-spouses")} <span class="count-badge small">${spouses.length}</span></h5>
+  <h5>${t("editor-section-spouses")} <span class="count-badge small">${spouseRecords.length}</span></h5>
   <ul class="rel-list">
-    ${spouses.map(sp => `<li><span>${_escHtml(sp.name)}</span><button class="btn-xs btn-danger" onclick="doRemoveMarriage('${id}','${sp.id}')">${t("editor-remove-btn")}</button></li>`).join("") || `<li class='empty'>${t("empty-rel")}</li>`}
+    ${spouseRecords.map(({ person: sp, marriage: m }) => `
+<li>
+  <span class="rel-name">${_escHtml(sp.name)}</span>
+  ${m.year ? `<span class="marriage-year-badge">⚭ ${_escHtml(m.year)}</span>` : ""}
+  <button class="btn-xs btn-muted" onclick="doEditMarriageYear('${id}','${sp.id}')" title="${t('marriage-year-edit-btn')}">⚭</button>
+  <button class="btn-xs btn-danger" onclick="doRemoveMarriage('${id}','${sp.id}')">${t("editor-remove-btn")}</button>
+</li>`).join("") || `<li class='empty'>${t("empty-rel")}</li>`}
   </ul>
-  <div class="rel-add-row">
+  <div class="rel-add-row marriage-add-row">
     <select id="sel-spouse"><option value="">${t("editor-select-spouse")}</option>${otherOptions}</select>
+    <input id="inp-marriage-year" type="text" class="marriage-year-input" maxlength="4"
+           placeholder="${t('marriage-year-ph')}" />
     <button class="btn-sm btn-primary" onclick="doAddSpouse('${id}')">${t("editor-add-btn")}</button>
   </div>
 </div>
@@ -662,8 +677,23 @@ window.doAddChild = function(parentId) {
 window.doAddSpouse = function(personId) {
     const v = document.getElementById("sel-spouse")?.value;
     if (!v) return;
-    addMarriage(_data, personId, v);
+    const year = (document.getElementById("inp-marriage-year")?.value || "").trim();
+    addMarriage(_data, personId, v, year || null);
     _onDataChange(_data); renderPersonEditor(personId);
+};
+
+window.doEditMarriageYear = function(s1, s2) {
+    const m = _data.marriages.find(rec =>
+        (rec.spouse1 === s1 && rec.spouse2 === s2) ||
+        (rec.spouse1 === s2 && rec.spouse2 === s1)
+    );
+    const cur = m ? (m.year || "") : "";
+    const newYear = prompt(t("marriage-year-prompt"), cur);
+    if (newYear === null) return;
+    updateMarriageYear(_data, s1, s2, newYear.trim() || null);
+    _onDataChange(_data);
+    renderPersonEditor(_selectedId);
+    showToast(t("toast-marriage-year-saved"));
 };
 window.doRemoveRelationship = function(parentId, childId) {
     removeRelationship(_data, parentId, childId);
@@ -879,6 +909,66 @@ ${s.oldest ? `
 
     showModal(t("stats-title"), bodyHTML, () => {}, t("modal-cancel"));
 }
+
+// ─── 数据健康检查模态框 ──────────────────────────────────────────────────────
+function showHealthCheckModal() {
+    if (!_data.persons.length) { showToast(t("toast-no-stats")); return; }
+
+    const issues = dataHealthCheck(_data);
+    const errorCnt = issues.filter(x => x.severity === "error").length;
+    const warnCnt  = issues.filter(x => x.severity === "warning").length;
+    const infoCnt  = issues.filter(x => x.severity === "info").length;
+
+    const summaryHtml = issues.length === 0
+        ? `<div class="health-ok">${t("health-all-ok")}</div>`
+        : `<div class="health-summary">
+             ${errorCnt ? `<span class="health-pill error">${t("health-errors").replace("{n}", errorCnt)}</span>` : ""}
+             ${warnCnt  ? `<span class="health-pill warning">${t("health-warnings").replace("{n}", warnCnt)}</span>` : ""}
+             ${infoCnt  ? `<span class="health-pill info">${t("health-infos").replace("{n}", infoCnt)}</span>` : ""}
+           </div>`;
+
+    const codeLabel = {
+        "duplicate-name":          t("health-duplicate-name"),
+        "death-before-birth":      t("health-death-before-birth"),
+        "future-birth":            t("health-future-birth"),
+        "likely-deceased":         t("health-likely-deceased"),
+        "isolated":                t("health-isolated"),
+        "parent-born-after-child": t("health-parent-born-after-child")
+    };
+
+    const grouped = {};
+    issues.forEach(iss => {
+        (grouped[iss.code] = grouped[iss.code] || []).push(iss);
+    });
+
+    const listHtml = Object.entries(grouped).map(([code, list]) => {
+        const sev = list[0].severity;
+        const rows = list.map(iss =>
+            `<div class="health-item-row">
+               <span class="health-item-name">${_escHtml(iss.name)}</span>
+               ${iss.ids.slice(0, 1).map(pid =>
+                   `<button class="btn-xs health-goto-btn"
+                            onclick="window.closeHealthModal&&window.closeHealthModal();selectPerson('${pid}')"
+                            title="${t('health-goto')}">${t('health-goto')}</button>`
+               ).join("")}
+             </div>`
+        ).join("");
+        return `
+<div class="health-group">
+  <div class="health-group-header">
+    <span class="health-sev-badge ${sev}">${t("health-sev-" + sev)}</span>
+    <span class="health-group-label">${codeLabel[code] || code}</span>
+    <span class="count-badge small">${list.length}</span>
+  </div>
+  <div class="health-group-items">${rows}</div>
+</div>`;
+    }).join("");
+
+    const bodyHtml = summaryHtml + (issues.length ? `<div class="health-list">${listHtml}</div>` : "");
+    showModal(t("health-title"), bodyHtml, () => {}, t("modal-cancel"));
+    window.closeHealthModal = closeModal;
+}
+window.showHealthCheckModal = showHealthCheckModal;
 
 // ─── 统计图表：性别分布饼图 ───────────────────────────────────────────────
 function _buildGenderPie(s) {

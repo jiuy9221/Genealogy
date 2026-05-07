@@ -50,6 +50,82 @@ let   _currentViewMode = "tree"; // "tree" | "timeline"
 let   _currentData     = null;   // 当前渲染的数据集（用于 tooltip）
 window._nodeDragActive = false;
 
+// ─── 子树折叠状态 ─────────────────────────────────────────────────────────
+const _collapsedSet = new Set();
+
+function _getDescendants(data, rootId) {
+    const result = new Set();
+    const queue  = [rootId];
+    while (queue.length) {
+        const cur = queue.shift();
+        data.relationships.filter(r => r.parent === cur).forEach(r => {
+            if (!result.has(r.child)) { result.add(r.child); queue.push(r.child); }
+        });
+    }
+    return result;
+}
+
+window.toggleCollapseNode = function(id) {
+    if (_collapsedSet.has(id)) _collapsedSet.delete(id);
+    else _collapsedSet.add(id);
+    if (window._onCollapseChange) window._onCollapseChange();
+};
+
+window.clearAllCollapsed = function() {
+    if (_collapsedSet.size === 0) return;
+    _collapsedSet.clear();
+    if (window._onCollapseChange) window._onCollapseChange();
+};
+
+function _appendCollapseToggle(nodeGroup, personId, isCollapsed, data) {
+    const cx = NODE_W / 2;
+    const cy = NODE_H + 9;
+    const dark = document.body.classList.contains("dark-mode");
+
+    const tg = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    tg.setAttribute("class", "collapse-toggle");
+    tg.style.cursor = "pointer";
+
+    // Backdrop circle for contrast
+    tg.appendChild(svgEl("circle", { cx, cy, r: "9",
+        fill: dark ? "#0f172a" : "#fff", opacity: "0.7" }));
+
+    const bgFill = isCollapsed ? "#f59e0b" : "#6366f1";
+    tg.appendChild(svgEl("circle", { cx, cy, r: "7.5", fill: bgFill, opacity: "0.95" }));
+
+    const arrow = svgEl("text", { x: cx, y: cy,
+        "text-anchor": "middle", "dominant-baseline": "middle",
+        "font-size": "9", "font-weight": "900", fill: "#fff",
+        "pointer-events": "none" });
+    arrow.textContent = isCollapsed ? "▶" : "▼";
+    tg.appendChild(arrow);
+
+    if (isCollapsed) {
+        const cnt = _getDescendants(data, personId).size;
+        if (cnt > 0) {
+            const label = `+${cnt}`;
+            const lw = label.length * 6 + 10;
+            const lx = cx + 11;
+            tg.appendChild(svgEl("rect", {
+                x: lx - 2, y: cy - 8, width: lw, height: 16, rx: "8",
+                fill: "#f59e0b", opacity: "0.95" }));
+            const lt = svgEl("text", {
+                x: lx + lw / 2 - 2, y: cy,
+                "text-anchor": "middle", "dominant-baseline": "middle",
+                "font-size": "9", "font-weight": "700", fill: "#fff",
+                "pointer-events": "none" });
+            lt.textContent = label;
+            tg.appendChild(lt);
+        }
+    }
+
+    tg.addEventListener("click", e => {
+        e.stopPropagation();
+        if (window.toggleCollapseNode) window.toggleCollapseNode(personId);
+    });
+    nodeGroup.appendChild(tg);
+}
+
 // ─── 时间轴事件详情弹层 ───────────────────────────────────────────────────
 let _eventPopupEl = null;
 
@@ -164,6 +240,12 @@ function _showContextMenu(personId, clientX, clientY) {
     _hideContextMenu();
 
     const isFocused = window.isFocusActive && window.isFocusActive(personId);
+    const hasChildren = _currentData && _currentData.relationships.some(r => r.parent === personId);
+    const isCollapsed = _collapsedSet.has(personId);
+    const collapseItem = hasChildren
+        ? `<div class="ctx-divider"></div>
+<button class="ctx-item" data-action="collapse">${isCollapsed ? "▶" : "▼"} <span>${isCollapsed ? t("ctx-expand") : t("ctx-collapse")}</span></button>`
+        : "";
 
     const menu = document.createElement("div");
     menu.className = "ctx-menu";
@@ -172,7 +254,8 @@ function _showContextMenu(personId, clientX, clientY) {
 <button class="ctx-item danger" data-action="delete">🗑️ <span>${t("ctx-delete")}</span></button>
 <div class="ctx-divider"></div>
 <button class="ctx-item" data-action="focus">${isFocused ? "✖" : "🎯"} <span>${isFocused ? t("ctx-exit-focus") : t("ctx-focus")}</span></button>
-<button class="ctx-item" data-action="center">📍 <span>${t("ctx-center")}</span></button>`;
+<button class="ctx-item" data-action="center">📍 <span>${t("ctx-center")}</span></button>
+${collapseItem}`;
 
     menu.style.left = clientX + "px";
     menu.style.top  = clientY + "px";
@@ -188,7 +271,11 @@ function _showContextMenu(personId, clientX, clientY) {
         const btn = e.target.closest(".ctx-item");
         if (!btn) return;
         _hideContextMenu();
-        if (window._onContextMenuAction) window._onContextMenuAction(btn.dataset.action, personId);
+        if (btn.dataset.action === "collapse") {
+            if (window.toggleCollapseNode) window.toggleCollapseNode(personId);
+        } else if (window._onContextMenuAction) {
+            window._onContextMenuAction(btn.dataset.action, personId);
+        }
     });
 
     // Close on any outside click or right-click
@@ -623,7 +710,20 @@ function renderTree(data, svgEl_el, onNodeClick) {
         return;
     }
 
-    const { nodePositions: rawPos, levelMap, parentsOf, spousesOf } = buildTreeLayout(data);
+    // ─── 计算折叠隐藏节点 ──────────────────────────────────────────────────
+    const activeCollapsed = new Set([..._collapsedSet].filter(id =>
+        data.persons.some(p => p.id === id) &&
+        data.relationships.some(r => r.parent === id)
+    ));
+    const hiddenIds = new Set();
+    activeCollapsed.forEach(id => _getDescendants(data, id).forEach(did => hiddenIds.add(did)));
+    const visData = hiddenIds.size === 0 ? data : {
+        persons:       data.persons.filter(p => !hiddenIds.has(p.id)),
+        relationships: data.relationships.filter(r => !hiddenIds.has(r.parent) && !hiddenIds.has(r.child)),
+        marriages:     data.marriages.filter(m => !hiddenIds.has(m.spouse1) && !hiddenIds.has(m.spouse2))
+    };
+
+    const { nodePositions: rawPos, levelMap, parentsOf, spousesOf } = buildTreeLayout(visData);
 
     // 存原始位置，应用拖拽偏移
     _basePositions = JSON.parse(JSON.stringify(rawPos));
@@ -691,13 +791,22 @@ function renderTree(data, svgEl_el, onNodeClick) {
     svgEl_el.appendChild(gLines);
     svgEl_el.appendChild(gNodes);
 
-    renderConnections(data, gLines, nodePositions, parentsOf, levelMap);
+    renderConnections(visData, gLines, nodePositions, parentsOf, levelMap);
 
     // 节点
-    data.persons.forEach(p => {
+    visData.persons.forEach(p => {
         const pos = nodePositions[p.id];
         if (!pos) return;
         gNodes.appendChild(_renderNodeGroup(p, pos, onNodeClick, true));
+    });
+
+    // 折叠切换按钮（有子代的可见节点底部显示 ▼/▶）
+    data.persons.forEach(p => {
+        if (!nodePositions[p.id]) return;
+        if (!data.relationships.some(r => r.parent === p.id)) return;
+        const g = _nodeGroups[p.id];
+        if (!g) return;
+        _appendCollapseToggle(g, p.id, activeCollapsed.has(p.id), data);
     });
 
     // 代际颜色图例（右上角，仅当代数 ≥ 2 时显示）
