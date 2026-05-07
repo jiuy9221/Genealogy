@@ -277,6 +277,29 @@
   - 统计图表（性别分布饼图、代际柱状图）嵌入统计面板
   - 批量选中多个节点进行批量操作（移动/导出子树）
 
+## 2026-05-08
+- 更新文件：modules/data.js、modules/ui.js、modules/tree.js、modules/i18n.js、style.css、index.html
+- 新增功能：
+  - **人员列表多维度排序（Multi-sort）**（ui.js + index.html + i18n.js + style.css）：
+    - `ui.js` 新增 `_sortMode` 状态变量（默认 `"name"`）；`bindSortSelect()` 绑定 `#sort-select` 下拉框 `change` 事件；`renderPersonList` 排序逻辑全面扩展支持五种排序方式：**姓名 A-Z**（原默认）、**出生年升序 ↑**、**出生年降序 ↓**（无出生年者排末尾）、**性别**（男→女→未知，同性别内按姓名）、**代际浅→深**（BFS 计算各人员代际层级，同层按姓名）；
+    - `index.html` 在左侧面板出生年筛选栏下方新增 `#sort-bar` 排序区域，含「排序」标签 + `<select id="sort-select">` 含五个 `data-i18n` 选项；
+    - `style.css` 新增 `.sort-bar`、`.sort-label-text`、`.sort-select`（含暗色主题 SVG 箭头）共 6 条规则；
+    - `i18n.js` 三语各新增 6 个排序键（`sort-label/name/birth-asc/birth-desc/gender/gen`，共 18 条翻译）。
+  - **关系路径查找（Relationship Path Finder）**（data.js + ui.js + i18n.js + style.css）：
+    - `data.js` 新增 `findRelationshipPath(data, fromId, toId)` 函数：BFS 穿越全部亲子/婚姻双向边，找出两人之间最短关系路径；返回 `[{id, rel}]` 数组，`rel` 值为 `"self"/"child"/"parent"/"spouse"/"related"`；两人无关联则返回 `null`；
+    - `ui.js` 新增 `_buildPathFinderSection(data, fromId)` 函数：在右侧编辑面板底部渲染「查找关系路径」区块——下拉选择另一位成员 + 「查找」按钮 + 结果展示区；`window.doFindPath(fromId)` 调用 `findRelationshipPath`，将路径可视化为可点击的 `.path-step` 节点 + `.path-connector` 关系标签链；自动处理无路径情形（显示提示文字）；点击任意节点可跳转至该人员；
+    - `style.css` 新增 18 条规则：`.path-finder-row`、`.path-finder-btn`、`.path-result`、`.path-step`（+`-from`+`-to`+hover）、`.path-connector`、`.path-rel-label`、`.path-arr`、`.path-no-result`、暗色适配 × 3；
+    - `i18n.js` 三语各新增 9 个键（`path-finder-*` × 4 + `path-rel-*` × 5，共 27 条翻译）。
+  - **节点悬停 Rich Tooltip（Rich Node Tooltip）**（tree.js + style.css）：
+    - `tree.js` 新增 `_currentData` 模块变量（`renderTree`/`renderTimeline` 首行赋值，确保 tooltip 始终访问最新数据）；新增 `_showNodeTooltip(person, data, x, y)`、`_hideNodeTooltip()`、`_positionTooltip(tipEl, x, y)` 三个函数；tooltip 卡片展示：**姓名**（粗体）、**性别标签**（男/女/未知按色着色）、**生卒年**（`b.YYYY` 或 `YYYY–YYYY`）、**父母/子女/配偶/事件/标签计数**（emoji + 数量）、**标签列表**（最多 4 个，省略号截断）；触发方式：mouseenter 后 350ms 延迟展示（拖拽中不触发），mousemove 实时跟随，mouseleave 立即消失；viewport 边界检测自动翻转位置；`renderTree`/`renderTimeline` 开头调用 `_hideNodeTooltip()` 清理旧浮层；
+    - `style.css` 新增 20 条规则（`.node-tooltip`、`.nt-show` 动画、`.nt-name/meta/gender/life/counts/tags`、暗色适配 × 8）；
+    - 打印样式：`#sort-bar`、`.path-finder-section` 加入打印隐藏列表。
+- 下一步：
+  - 导出 PDF（jsPDF 离线库或 @media print 进一步增强）
+  - 关系强度可视化（连线粗细/颜色随代际深度，已有基础，可细化）
+  - 合并重复人员检测（按姓名 + 出生年相似度）
+  - 节点框选（Shift+拖拽选中区域内多个节点并批量操作）
+
 ## 2026-05-07
 - 更新文件：modules/data.js、modules/ui.js、modules/tree.js、modules/i18n.js、style.css、index.html
 - 新增功能：

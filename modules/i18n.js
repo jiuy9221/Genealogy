@@ -202,7 +202,22 @@ const TRANSLATIONS = {
         "birth-from-ph": "出生年 ≥",
         "birth-to-ph": "≤ 出生年",
         "birth-year-filter-title": "按出生年筛选",
-        "print-footer-hint": "离线家族树"
+        "print-footer-hint": "离线家族树",
+        "sort-label": "排序",
+        "sort-name": "姓名 A-Z",
+        "sort-birth-asc": "出生年 ↑",
+        "sort-birth-desc": "出生年 ↓",
+        "sort-gender": "性别",
+        "sort-gen": "代际",
+        "path-finder-title": "查找关系路径",
+        "path-finder-select": "— 选择成员 —",
+        "path-finder-btn": "查找",
+        "path-finder-no-path": "未找到关系路径（两人无亲属关联）",
+        "path-rel-self": "本人",
+        "path-rel-parent": "父/母 ↑",
+        "path-rel-child": "子/女 ↓",
+        "path-rel-spouse": "配偶 ♥",
+        "path-rel-related": "相关"
     },
     "zh-TW": {
         "app-title": "族譜",
@@ -403,7 +418,22 @@ const TRANSLATIONS = {
         "birth-from-ph": "出生年 ≥",
         "birth-to-ph": "≤ 出生年",
         "birth-year-filter-title": "按出生年篩選",
-        "print-footer-hint": "離線家族樹"
+        "print-footer-hint": "離線家族樹",
+        "sort-label": "排序",
+        "sort-name": "姓名 A-Z",
+        "sort-birth-asc": "出生年 ↑",
+        "sort-birth-desc": "出生年 ↓",
+        "sort-gender": "性別",
+        "sort-gen": "代際",
+        "path-finder-title": "查找關係路徑",
+        "path-finder-select": "— 選擇成員 —",
+        "path-finder-btn": "查找",
+        "path-finder-no-path": "未找到關係路徑（兩人無親屬關聯）",
+        "path-rel-self": "本人",
+        "path-rel-parent": "父/母 ↑",
+        "path-rel-child": "子/女 ↓",
+        "path-rel-spouse": "配偶 ♥",
+        "path-rel-related": "相關"
     },
     "en": {
         "app-title": "Family Tree",
@@ -604,7 +634,22 @@ const TRANSLATIONS = {
         "birth-from-ph": "Birth year ≥",
         "birth-to-ph": "≤ birth year",
         "birth-year-filter-title": "Filter by birth year",
-        "print-footer-hint": "Offline Family Tree"
+        "print-footer-hint": "Offline Family Tree",
+        "sort-label": "Sort",
+        "sort-name": "Name A-Z",
+        "sort-birth-asc": "Birth Year ↑",
+        "sort-birth-desc": "Birth Year ↓",
+        "sort-gender": "Gender",
+        "sort-gen": "Generation",
+        "path-finder-title": "Find Relationship",
+        "path-finder-select": "— Select Person —",
+        "path-finder-btn": "Find",
+        "path-finder-no-path": "No path found (no family connection)",
+        "path-rel-self": "self",
+        "path-rel-parent": "parent ↑",
+        "path-rel-child": "child ↓",
+        "path-rel-spouse": "spouse ♥",
+        "path-rel-related": "related"
     }
 };
 

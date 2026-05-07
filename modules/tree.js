@@ -47,6 +47,7 @@ let   _onDragEnd     = null;
 let   _wasDragging   = false;
 let   _dragHandlersInitialized = false;
 let   _currentViewMode = "tree"; // "tree" | "timeline"
+let   _currentData     = null;   // 当前渲染的数据集（用于 tooltip）
 window._nodeDragActive = false;
 
 // ─── 时间轴事件详情弹层 ───────────────────────────────────────────────────
@@ -93,6 +94,62 @@ function _showEventPopup(person, ev, clientX, clientY) {
         _hideEventPopup();
     });
     setTimeout(() => document.addEventListener("click", _hideEventPopup, { once: true }), 10);
+}
+
+// ─── 节点悬停 Rich Tooltip ─────────────────────────────────────────────────
+let _nodeTooltipEl    = null;
+let _nodeTooltipTimer = null;
+
+function _hideNodeTooltip() {
+    if (_nodeTooltipTimer) { clearTimeout(_nodeTooltipTimer); _nodeTooltipTimer = null; }
+    if (_nodeTooltipEl)   { _nodeTooltipEl.remove(); _nodeTooltipEl = null; }
+}
+
+function _positionTooltip(tipEl, clientX, clientY) {
+    const TW = 190, TH = 120;
+    let x = clientX + 14, y = clientY + 14;
+    if (x + TW > window.innerWidth  - 8) x = clientX - TW - 8;
+    if (y + TH > window.innerHeight - 8) y = clientY - TH - 8;
+    tipEl.style.left = x + "px";
+    tipEl.style.top  = y + "px";
+}
+
+function _showNodeTooltip(person, data, clientX, clientY) {
+    _hideNodeTooltip();
+    const parentCount = data.relationships.filter(r => r.child  === person.id).length;
+    const childCount  = data.relationships.filter(r => r.parent === person.id).length;
+    const spouseCount = data.marriages.filter(m => m.spouse1 === person.id || m.spouse2 === person.id).length;
+    const eventCount  = (person.events || []).length;
+    const tagCount    = (person.tags   || []).length;
+
+    const gLabel  = person.gender === "male" ? (window.t ? t("gender-male") : "M")
+                  : person.gender === "female" ? (window.t ? t("gender-female") : "F")
+                  : (window.t ? t("gender-unknown") : "?");
+    const b = person.birth ? person.birth.slice(0, 4) : null;
+    const d = person.death ? person.death.slice(0, 4) : null;
+    const lifespan = b && d ? `${b}–${d}` : b ? `b.${b}` : "";
+
+    const tip = document.createElement("div");
+    tip.className = "node-tooltip";
+    tip.innerHTML = `
+<div class="nt-name">${person.name}</div>
+<div class="nt-meta">
+  <span class="nt-gender ${person.gender || "unknown"}">${gLabel}</span>
+  ${lifespan ? `<span class="nt-life">${lifespan}</span>` : ""}
+</div>
+<div class="nt-counts">
+  <span title="${window.t ? t("editor-section-parents") : "Parents"}">&#128106; ${parentCount}</span>
+  <span title="${window.t ? t("editor-section-children") : "Children"}">&#128118; ${childCount}</span>
+  <span title="${window.t ? t("editor-section-spouses") : "Spouses"}">&#10084; ${spouseCount}</span>
+  ${eventCount > 0 ? `<span title="${window.t ? t("editor-section-events") : "Events"}">&#128197; ${eventCount}</span>` : ""}
+  ${tagCount   > 0 ? `<span title="${window.t ? t("editor-section-tags") : "Tags"}">&#127991; ${tagCount}</span>`  : ""}
+</div>
+${(person.tags || []).length ? `<div class="nt-tags">${person.tags.slice(0, 4).join(" · ")}</div>` : ""}
+`;
+    document.body.appendChild(tip);
+    _nodeTooltipEl = tip;
+    _positionTooltip(tip, clientX, clientY);
+    requestAnimationFrame(() => tip.classList.add("nt-show"));
 }
 
 // ─── 右键快捷菜单 ─────────────────────────────────────────────────────────
@@ -419,6 +476,18 @@ function _renderNodeGroup(p, pos, onNodeClick, enableDrag) {
 
     g.addEventListener("click", () => { if (!_wasDragging) onNodeClick && onNodeClick(p.id); });
 
+    // Rich hover tooltip
+    g.addEventListener("mouseenter", e => {
+        if (window._nodeDragActive) return;
+        _nodeTooltipTimer = setTimeout(() => {
+            if (_currentData) _showNodeTooltip(p, _currentData, e.clientX, e.clientY);
+        }, 350);
+    });
+    g.addEventListener("mousemove", e => {
+        if (_nodeTooltipEl) _positionTooltip(_nodeTooltipEl, e.clientX, e.clientY);
+    });
+    g.addEventListener("mouseleave", _hideNodeTooltip);
+
     // Right-click context menu (both tree and timeline modes)
     g.addEventListener("contextmenu", e => {
         e.preventDefault();
@@ -539,7 +608,9 @@ function _renderNodeGroup(p, pos, onNodeClick, enableDrag) {
 // ─── 主渲染 ──────────────────────────────────────────────────────────────
 function renderTree(data, svgEl_el, onNodeClick) {
     _currentViewMode = "tree";
+    _currentData = data;
     _hideEventPopup();
+    _hideNodeTooltip();
     initDragHandlers();
     svgEl_el.innerHTML = "";
     Object.keys(_nodeGroups).forEach(k => delete _nodeGroups[k]);
@@ -679,6 +750,8 @@ function highlightNode(id) {
 // ─── 时间轴视图渲染 ──────────────────────────────────────────────────────────
 function renderTimeline(data, svgEl_el, onNodeClick) {
     _currentViewMode = "timeline";
+    _currentData = data;
+    _hideNodeTooltip();
     initDragHandlers();
     svgEl_el.innerHTML = "";
     Object.keys(_nodeGroups).forEach(k => delete _nodeGroups[k]);

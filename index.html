@@ -99,6 +99,16 @@
                        min="1000" max="2100" />
                 <button id="birth-year-clear" class="byr-clear-btn" title="清除年份筛选">✕</button>
             </div>
+            <div id="sort-bar" class="sort-bar">
+                <span class="sort-label-text" data-i18n="sort-label">排序</span>
+                <select id="sort-select" class="sort-select">
+                    <option value="name"       data-i18n="sort-name">姓名 A-Z</option>
+                    <option value="birth-asc"  data-i18n="sort-birth-asc">出生年 ↑</option>
+                    <option value="birth-desc" data-i18n="sort-birth-desc">出生年 ↓</option>
+                    <option value="gender"     data-i18n="sort-gender">性别</option>
+                    <option value="gen"        data-i18n="sort-gen">代际</option>
+                </select>
+            </div>
         </div>
         <ul id="person-list"></ul>
     </div>

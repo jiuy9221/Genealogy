@@ -1803,8 +1803,184 @@ body.dark-mode .mob-bar-btn.active { color: #60a5fa; }
     }
     .print-footer-sep { color: #cbd5e1; }
 
-    /* 打印：隐藏出生年份筛选 */
-    #birth-year-filter { display: none !important; }
+    /* 打印：隐藏出生年份筛选、排序栏、路径查找 */
+    #birth-year-filter, #sort-bar, .path-finder-section { display: none !important; }
 
     @page { margin: 15mm; size: A3 landscape; }
 }
+
+/* ─── 多维度排序栏 ────────────────────────────────────────────────────────── */
+.sort-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px 4px;
+}
+.sort-label-text {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.sort-select {
+    flex: 1;
+    font-size: 12px;
+    padding: 3px 22px 3px 6px;
+    border: 1.5px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    background-size: 9px;
+}
+.sort-select:focus { outline: none; border-color: var(--color-primary); }
+body.dark-mode .sort-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E");
+}
+
+/* ─── 关系路径查找区块 ───────────────────────────────────────────────────── */
+.path-finder-section {}
+.path-finder-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.path-finder-row select {
+    flex: 1;
+    font-size: 12px;
+    padding: 4px 6px;
+    border: 1.5px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-bg);
+    color: var(--color-text);
+    appearance: none;
+    -webkit-appearance: none;
+}
+.path-finder-btn {
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 6px;
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+}
+.path-finder-btn:hover { opacity: 0.85; }
+.path-result {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    min-height: 28px;
+    padding: 4px 0;
+}
+.path-step {
+    padding: 2px 9px;
+    border-radius: 5px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+}
+.path-step:hover { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.path-step-from { background: #dbeafe; border-color: #93c5fd; color: #1d4ed8; }
+.path-step-to   { background: #dcfce7; border-color: #86efac; color: #15803d; }
+.path-connector {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 10px;
+    color: var(--color-text-muted);
+    line-height: 1.1;
+    gap: 0;
+}
+.path-rel-label { font-size: 9px; }
+.path-arr       { font-size: 13px; line-height: 1; }
+.path-no-result { font-size: 12px; color: var(--color-text-muted); font-style: italic; }
+
+body.dark-mode .path-step-from { background: #1e3a5f; border-color: #3b5e8a; color: #93c5fd; }
+body.dark-mode .path-step-to   { background: #14532d; border-color: #166534; color: #86efac; }
+body.dark-mode .path-step:hover { background: var(--color-primary); color: #fff; }
+
+/* ─── 节点悬停 Rich Tooltip ─────────────────────────────────────────────── */
+.node-tooltip {
+    position: fixed;
+    z-index: 9500;
+    background: var(--color-surface, #fff);
+    border: 1.5px solid var(--color-border, #e0e3e8);
+    border-radius: 10px;
+    padding: 10px 13px;
+    min-width: 150px;
+    max-width: 210px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.14);
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0.94) translateY(-4px);
+    transition: opacity 0.14s ease, transform 0.14s ease;
+}
+.node-tooltip.nt-show {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+.nt-name {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 4px;
+    color: var(--color-text, #1e293b);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.nt-meta {
+    display: flex;
+    gap: 7px;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 11px;
+}
+.nt-gender          { color: var(--color-text-muted, #64748b); }
+.nt-gender.male     { color: #2563eb; }
+.nt-gender.female   { color: #db2777; }
+.nt-gender.unknown  { color: #64748b; }
+.nt-life            { color: var(--color-text-muted, #64748b); font-size: 11px; }
+.nt-counts {
+    display: flex;
+    gap: 9px;
+    font-size: 12px;
+    color: var(--color-text-muted, #64748b);
+    margin-bottom: 3px;
+    flex-wrap: wrap;
+}
+.nt-tags {
+    font-size: 10px;
+    color: var(--color-text-muted, #64748b);
+    margin-top: 2px;
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.dark-mode .node-tooltip {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 4px 18px rgba(0,0,0,.45);
+}
+body.dark-mode .nt-name   { color: #e2e8f0; }
+body.dark-mode .nt-gender.male   { color: #93c5fd; }
+body.dark-mode .nt-gender.female { color: #f9a8d4; }
+body.dark-mode .nt-gender.unknown { color: #94a3b8; }
+body.dark-mode .nt-life,
+body.dark-mode .nt-counts,
+body.dark-mode .nt-tags   { color: #94a3b8; }

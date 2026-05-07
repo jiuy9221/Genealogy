@@ -8,6 +8,7 @@ let _tagFilter = "";
 let _selectedIds = new Set();
 let _birthFrom = null;
 let _birthTo = null;
+let _sortMode = "name";
 
 // Deterministic tag color from palette
 function _tagColor(tag) {
@@ -30,6 +31,17 @@ function init(data, onDataChange) {
     bindButtons();
     bindTagFilter();
     bindBirthYearFilter();
+    bindSortSelect();
+}
+
+function bindSortSelect() {
+    const sel = document.getElementById("sort-select");
+    if (!sel) return;
+    sel.value = _sortMode;
+    sel.addEventListener("change", e => {
+        _sortMode = e.target.value;
+        renderPersonList(_data);
+    });
 }
 
 function bindTagFilter() {
@@ -296,7 +308,44 @@ function renderPersonList(data) {
         return;
     }
 
-    const sorted = [...persons].sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+    // ─── 多维度排序 ───────────────────────────────────────────────────────
+    let levelMap = {};
+    if (_sortMode === "gen") {
+        const parentsOf  = id => _data.relationships.filter(r => r.child  === id).map(r => r.parent);
+        const childrenOf = id => _data.relationships.filter(r => r.parent === id).map(r => r.child);
+        const roots = _data.persons.filter(p => parentsOf(p.id).length === 0).map(p => p.id);
+        const visited = new Set();
+        const queue = roots.map(id => ({ id, level: 0 }));
+        while (queue.length) {
+            const { id, level } = queue.shift();
+            if (visited.has(id)) { if (level > (levelMap[id] ?? 0)) levelMap[id] = level; continue; }
+            visited.add(id); levelMap[id] = level;
+            childrenOf(id).forEach(cid => queue.push({ id: cid, level: level + 1 }));
+        }
+        _data.persons.forEach(p => { if (levelMap[p.id] === undefined) levelMap[p.id] = 0; });
+    }
+
+    const sorted = [...persons];
+    if (_sortMode === "birth-asc") {
+        sorted.sort((a, b) => {
+            const ya = a.birth ? parseInt(a.birth) : Infinity;
+            const yb = b.birth ? parseInt(b.birth) : Infinity;
+            return ya - yb || a.name.localeCompare(b.name, "zh-CN");
+        });
+    } else if (_sortMode === "birth-desc") {
+        sorted.sort((a, b) => {
+            const ya = a.birth ? parseInt(a.birth) : -Infinity;
+            const yb = b.birth ? parseInt(b.birth) : -Infinity;
+            return yb - ya || a.name.localeCompare(b.name, "zh-CN");
+        });
+    } else if (_sortMode === "gender") {
+        const gOrd = { male: 0, female: 1, "": 2 };
+        sorted.sort((a, b) => (gOrd[a.gender] ?? 2) - (gOrd[b.gender] ?? 2) || a.name.localeCompare(b.name, "zh-CN"));
+    } else if (_sortMode === "gen") {
+        sorted.sort((a, b) => (levelMap[a.id] ?? 0) - (levelMap[b.id] ?? 0) || a.name.localeCompare(b.name, "zh-CN"));
+    } else {
+        sorted.sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+    }
 
     sorted.forEach(p => {
         const li = document.createElement("li");
@@ -523,6 +572,8 @@ ${pathHtml}
 ${_buildEventsSection(p, id)}
 
 ${_buildMiniRelGraph(_data, id)}
+
+${_buildPathFinderSection(_data, id)}
 `;
 }
 
@@ -1309,6 +1360,58 @@ function _buildMiniRelGraph(data, focusId) {
   </div>
 </div>`;
 }
+
+// ─── 关系路径查找区块 ──────────────────────────────────────────────────────
+function _buildPathFinderSection(data, fromId) {
+    const otherOpts = data.persons
+        .filter(x => x.id !== fromId)
+        .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"))
+        .map(x => `<option value="${x.id}">${_escHtml(x.name)}</option>`)
+        .join("");
+    if (!otherOpts) return "";
+    return `
+<div class="editor-section path-finder-section">
+  <h5>${t("path-finder-title")}</h5>
+  <div class="path-finder-row">
+    <select id="sel-path-target">
+      <option value="">${t("path-finder-select")}</option>
+      ${otherOpts}
+    </select>
+    <button class="btn-sm path-finder-btn" onclick="doFindPath('${fromId}')">${t("path-finder-btn")}</button>
+  </div>
+  <div id="path-result" class="path-result"></div>
+</div>`;
+}
+
+window.doFindPath = function(fromId) {
+    const toId = document.getElementById("sel-path-target")?.value;
+    const resultEl = document.getElementById("path-result");
+    if (!resultEl) return;
+    if (!toId) { resultEl.innerHTML = ""; return; }
+
+    const path = findRelationshipPath(_data, fromId, toId);
+    if (!path) {
+        resultEl.innerHTML = `<span class="path-no-result">${t("path-finder-no-path")}</span>`;
+        return;
+    }
+
+    const relLabel = rel =>
+        rel === "self"    ? t("path-rel-self")
+      : rel === "parent"  ? t("path-rel-parent")
+      : rel === "child"   ? t("path-rel-child")
+      : rel === "spouse"  ? t("path-rel-spouse")
+      : t("path-rel-related");
+
+    resultEl.innerHTML = path.map((step, i) => {
+        const person = _data.persons.find(p => p.id === step.id);
+        const name   = person ? _escHtml(person.name) : step.id;
+        const cls    = `path-step${i === 0 ? " path-step-from" : i === path.length - 1 ? " path-step-to" : ""}`;
+        const sep    = i < path.length - 1
+            ? `<span class="path-connector"><span class="path-rel-label">${relLabel(path[i + 1].rel)}</span><span class="path-arr">›</span></span>`
+            : "";
+        return `<span class="${cls}" onclick="selectPerson('${step.id}')" title="${name}">${name}</span>${sep}`;
+    }).join("");
+};
 
 // selectPerson 供外部调用
 window.selectPerson = selectPerson;

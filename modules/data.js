@@ -269,6 +269,59 @@ function getAncestorPath(data, personId) {
     return pathIds.map(id => data.persons.find(p => p.id === id)).filter(Boolean);
 }
 
+// ─── 关系路径查找（BFS，穿越亲子+婚姻边）────────────────────────────────────
+// 返回从 fromId 到 toId 的最短路径数组：[{id, rel}, ...]
+// rel 含义：'self'=起点, 'child'=target是from的子女, 'parent'=target是from的父母, 'spouse'=配偶
+function findRelationshipPath(data, fromId, toId) {
+    if (!fromId || !toId || !data) return null;
+    if (fromId === toId) return [{ id: fromId, rel: "self" }];
+
+    const edges = {};
+    const adj   = {};
+    data.persons.forEach(p => { adj[p.id] = []; });
+
+    data.relationships.forEach(r => {
+        if (!adj[r.parent] || !adj[r.child]) return;
+        adj[r.parent].push(r.child);
+        adj[r.child].push(r.parent);
+        edges[`${r.parent}|${r.child}`] = "child";    // 沿此边到达子女
+        edges[`${r.child}|${r.parent}`]  = "parent";  // 沿此边到达父母
+    });
+    data.marriages.forEach(m => {
+        if (!adj[m.spouse1] || !adj[m.spouse2]) return;
+        adj[m.spouse1].push(m.spouse2);
+        adj[m.spouse2].push(m.spouse1);
+        edges[`${m.spouse1}|${m.spouse2}`] = "spouse";
+        edges[`${m.spouse2}|${m.spouse1}`] = "spouse";
+    });
+
+    // BFS
+    const prev  = { [fromId]: null };
+    const queue = [fromId];
+    let found   = false;
+    while (queue.length) {
+        const cur = queue.shift();
+        if (cur === toId) { found = true; break; }
+        for (const nb of (adj[cur] || [])) {
+            if (nb in prev) continue;
+            prev[nb] = cur;
+            queue.push(nb);
+        }
+    }
+    if (!found) return null;
+
+    // 回溯路径
+    const path = [];
+    let cur = toId;
+    while (cur !== null) {
+        const from = prev[cur];
+        const rel  = from ? (edges[`${from}|${cur}`] || "related") : "self";
+        path.unshift({ id: cur, rel });
+        cur = from;
+    }
+    return path;
+}
+
 // ─── 多族谱文件管理 ────────────────────────────────────────────────────────
 const FILE_LIST_KEY = "genealogy_file_list";
 const ACTIVE_ID_KEY = "genealogy_active_id";
