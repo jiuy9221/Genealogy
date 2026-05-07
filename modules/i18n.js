@@ -181,7 +181,13 @@ const TRANSLATIONS = {
         "mini-graph-no-rels": "暂无直系亲属关系",
         "stats-gender-dist": "性别分布",
         "stats-gen-dist": "代际人数",
-        "event-popup-close": "关闭"
+        "stats-birth-dist": "出生年份分布",
+        "event-popup-close": "关闭",
+        "form-tags": "标签",
+        "form-tags-placeholder": "用逗号分隔，如：军人, 商人, 学者",
+        "editor-section-tags": "标签",
+        "filter-all-tags": "所有标签",
+        "toast-tag-filter": "按标签筛选：{tag}"
     },
     "zh-TW": {
         "app-title": "族譜",
@@ -361,7 +367,13 @@ const TRANSLATIONS = {
         "mini-graph-no-rels": "暫無直系親屬關係",
         "stats-gender-dist": "性別分布",
         "stats-gen-dist": "代際人數",
-        "event-popup-close": "關閉"
+        "stats-birth-dist": "出生年份分布",
+        "event-popup-close": "關閉",
+        "form-tags": "標籤",
+        "form-tags-placeholder": "用逗號分隔，如：軍人, 商人, 學者",
+        "editor-section-tags": "標籤",
+        "filter-all-tags": "所有標籤",
+        "toast-tag-filter": "按標籤篩選：{tag}"
     },
     "en": {
         "app-title": "Family Tree",
@@ -541,7 +553,13 @@ const TRANSLATIONS = {
         "mini-graph-no-rels": "No direct relationships",
         "stats-gender-dist": "Gender Distribution",
         "stats-gen-dist": "By Generation",
-        "event-popup-close": "Close"
+        "stats-birth-dist": "Birth Year Distribution",
+        "event-popup-close": "Close",
+        "form-tags": "Tags",
+        "form-tags-placeholder": "Comma-separated, e.g.: soldier, merchant, scholar",
+        "editor-section-tags": "Tags",
+        "filter-all-tags": "All Tags",
+        "toast-tag-filter": "Filtering by tag: {tag}"
     }
 };
 

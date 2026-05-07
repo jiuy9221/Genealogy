@@ -16,6 +16,14 @@ const EVENT_TYPE_COLORS = {
     other:     "#94a3b8"
 };
 
+// ─── 标签颜色（与 ui.js 同算法）──────────────────────────────────────────
+function _tagColorTree(tag) {
+    const P = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#ec4899","#06b6d4","#84cc16","#f97316","#64748b"];
+    let h = 0;
+    for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) & 0xFFFFF;
+    return P[h % P.length];
+}
+
 // ─── 模块级状态 ──────────────────────────────────────────────────────────
 const _nodeGroups    = {}; // personId -> <g>
 const _customOffsets = {}; // personId -> { dx, dy } 拖拽偏移（模块生命周期持久）
@@ -486,6 +494,27 @@ function _renderNodeGroup(p, pos, onNodeClick, enableDrag) {
         bt.textContent = cnt > 9 ? "9+" : String(cnt);
         badgeG.appendChild(bt);
         g.appendChild(badgeG);
+    }
+
+    // Tag color dots at bottom of node (max 5)
+    if (p.tags && p.tags.length > 0) {
+        const tagG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        tagG.setAttribute("pointer-events", "none");
+        const dots = p.tags.slice(0, 5);
+        const dotR = 3.5;
+        const dotGap = 3;
+        const totalDotW = dots.length * (dotR * 2) + (dots.length - 1) * dotGap;
+        const startX = (NODE_W - totalDotW) / 2;
+        dots.forEach((tag, i) => {
+            const cx = startX + i * (dotR * 2 + dotGap) + dotR;
+            const cy = NODE_H - 6;
+            const titleEl = document.createElementNS("http://www.w3.org/2000/svg", "title");
+            titleEl.textContent = tag;
+            const dot = svgEl("circle", { cx, cy, r: dotR, fill: _tagColorTree(tag), opacity: "0.9" });
+            dot.appendChild(titleEl);
+            tagG.appendChild(dot);
+        });
+        g.appendChild(tagG);
     }
 
     return g;

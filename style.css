@@ -1562,6 +1562,37 @@ body.dark-mode .chart-title        { color: #94a3b8; }
 body.dark-mode .chart-legend-row   { color: #cbd5e1; }
 body.dark-mode .chart-legend-val   { color: #94a3b8; }
 
+/* ─── 出生年份直方图 ───────────────────────────────────────────────────────── */
+.birth-hist-section  { margin-top: 4px; }
+.birth-hist-scroll   { overflow-x: auto; padding-bottom: 4px; }
+.birth-hist-svg      { display: block; }
+
+/* ─── 标签系统（Tag System）────────────────────────────────────────────────── */
+/* 人员列表 — 小色点 */
+.person-tag-dots     { display: inline-flex; align-items: center; gap: 3px; margin-left: 4px; }
+.person-tag-dot      { display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+                        flex-shrink: 0; }
+
+/* 标签筛选下拉框 */
+.tag-filter-select   { display: block; width: 100%; margin-top: 5px; padding: 4px 6px;
+                        font-size: 12px; border: 1px solid #e2e8f0; border-radius: 6px;
+                        background: #fff; color: #1e293b; cursor: pointer; outline: none; }
+.tag-filter-select:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px #3b82f620; }
+
+/* 编辑面板 — 标签区 */
+.tags-view-section   { padding: 8px 12px 10px; }
+.tags-view-section h5 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase;
+                         color: #94a3b8; letter-spacing: .06em; }
+.tag-chips-row       { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag-chip            { display: inline-block; padding: 2px 9px; border-radius: 999px;
+                        font-size: 11px; font-weight: 600; cursor: pointer;
+                        transition: opacity .15s, transform .1s; }
+.tag-chip:hover      { opacity: .8; transform: scale(1.04); }
+
+/* 暗色主题适配 */
+body.dark-mode .tag-filter-select { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+body.dark-mode .tag-filter-select:focus { border-color: #60a5fa; box-shadow: 0 0 0 2px #3b82f620; }
+
 /* ─── 打印样式增强 ─────────────────────────────────────────────────────────── */
 @media print {
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }

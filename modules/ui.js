@@ -4,6 +4,15 @@ let _data = null;
 let _selectedId = null;
 let _onDataChange = null;
 let _searchQuery = "";
+let _tagFilter = "";
+
+// Deterministic tag color from palette
+function _tagColor(tag) {
+    const P = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#ec4899","#06b6d4","#84cc16","#f97316","#64748b"];
+    let h = 0;
+    for (let i = 0; i < tag.length; i++) h = (h * 31 + tag.charCodeAt(i)) & 0xFFFFF;
+    return P[h % P.length];
+}
 
 function _escHtml(s) {
     return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -16,6 +25,16 @@ function init(data, onDataChange) {
     _data = data;
     _onDataChange = onDataChange;
     bindButtons();
+    bindTagFilter();
+}
+
+function bindTagFilter() {
+    const sel = document.getElementById("tag-filter");
+    if (!sel) return;
+    sel.addEventListener("change", e => {
+        _tagFilter = e.target.value;
+        renderPersonList(_data);
+    });
 }
 
 function bindButtons() {
@@ -148,7 +167,7 @@ function showImportDialog(parsed, format) {
     }, t("import-overwrite"));
 }
 
-// ─── 人员列表渲染（含搜索过滤）────────────────────────────────────────
+// ─── 人员列表渲染（含搜索 & 标签过滤）────────────────────────────────────
 function renderPersonList(data) {
     _data = data;
     const list = document.getElementById("person-list");
@@ -162,13 +181,27 @@ function renderPersonList(data) {
             return initials.includes(_searchQuery);
         });
     }
+    if (_tagFilter) {
+        persons = persons.filter(p => (p.tags || []).includes(_tagFilter));
+    }
 
     document.getElementById("person-count").textContent = data.persons.length;
+
+    // Rebuild tag filter dropdown options
+    const tagSel = document.getElementById("tag-filter");
+    if (tagSel) {
+        const allTags = [...new Set(data.persons.flatMap(p => p.tags || []))].sort();
+        const prevVal = tagSel.value;
+        tagSel.innerHTML = `<option value="">${t("filter-all-tags")}</option>` +
+            allTags.map(tag => `<option value="${_escHtml(tag)}"${prevVal === tag ? " selected" : ""}>${_escHtml(tag)}</option>`).join("");
+        if (!allTags.includes(prevVal)) { tagSel.value = ""; _tagFilter = ""; }
+        tagSel.style.display = allTags.length ? "" : "none";
+    }
 
     // Update search count indicator
     const countEl = document.getElementById("search-count");
     if (countEl) {
-        if (_searchQuery) {
+        if (_searchQuery || _tagFilter) {
             countEl.textContent = t("search-count-filtered")
                 .replace("{f}", persons.length)
                 .replace("{n}", data.persons.length);
@@ -181,7 +214,7 @@ function renderPersonList(data) {
     if (!persons.length) {
         const li = document.createElement("li");
         li.className = "empty-hint";
-        li.textContent = _searchQuery ? t("no-match") : t("no-people");
+        li.textContent = (_searchQuery || _tagFilter) ? t("no-match") : t("no-people");
         list.appendChild(li);
         return;
     }
@@ -200,7 +233,11 @@ function renderPersonList(data) {
                 : `<span class="tag">${t("tag-unknown")}</span>`;
 
         const birthYr = p.birth ? `<span class="person-birth">${p.birth.slice(0, 4)}</span>` : "";
-        li.innerHTML = `<span class="person-name">${_searchQuery ? highlightMatch(p.name, _searchQuery) : p.name}</span>${birthYr}${gTag}`;
+        const tagDots = (p.tags || []).slice(0, 4).map(tag =>
+            `<span class="person-tag-dot" style="background:${_tagColor(tag)}" title="${_escHtml(tag)}"></span>`
+        ).join("");
+        const tagDotsHtml = tagDots ? `<span class="person-tag-dots">${tagDots}</span>` : "";
+        li.innerHTML = `<span class="person-name">${_searchQuery ? highlightMatch(p.name, _searchQuery) : _escHtml(p.name)}</span>${birthYr}${gTag}${tagDotsHtml}`;
         li.addEventListener("click", () => selectPerson(p.id));
         list.appendChild(li);
     });
@@ -262,13 +299,25 @@ function renderPersonEditor(id) {
     const ancestorPath = getAncestorPath(_data, id);
     const pathHtml = buildAncestorPathHtml(ancestorPath, id);
 
+    const tagsHtml = (p.tags && p.tags.length) ? `
+<div class="editor-section tags-view-section">
+  <h5>${t("editor-section-tags")}</h5>
+  <div class="tag-chips-row">
+    ${p.tags.map(tag =>
+        `<span class="tag-chip" style="background:${_tagColor(tag)}18;color:${_tagColor(tag)};border:1px solid ${_tagColor(tag)}55"
+               onclick="document.getElementById('tag-filter').value='${_escHtml(tag)}';document.getElementById('tag-filter').dispatchEvent(new Event('change'))"
+               title="${t('filter-all-tags')}: ${_escHtml(tag)}">${_escHtml(tag)}</span>`
+    ).join("")}
+  </div>
+</div>` : "";
+
     panel.innerHTML = `
 <div class="editor-section">
   <div class="editor-header">
     <div class="editor-person-meta">
       ${avatarHtml}
       <div>
-        <h4>${p.name} <span class="tag ${genderClass}">${genderLabel}</span></h4>
+        <h4>${_escHtml(p.name)} <span class="tag ${genderClass}">${genderLabel}</span></h4>
         ${age ? `<div class="age-hint">${age}</div>` : ""}
       </div>
     </div>
@@ -283,9 +332,10 @@ function renderPersonEditor(id) {
   <table class="info-table">
     <tr><td>${t("editor-birth")}</td><td>${p.birth || t("birth-unknown")}</td></tr>
     ${p.death ? `<tr><td>${t("editor-death")}</td><td>${p.death}</td></tr>` : ""}
-    ${p.notes ? `<tr><td>${t("editor-notes")}</td><td class="notes-cell">${p.notes}</td></tr>` : ""}
+    ${p.notes ? `<tr><td>${t("editor-notes")}</td><td class="notes-cell">${_escHtml(p.notes)}</td></tr>` : ""}
   </table>
 </div>
+${tagsHtml}
 
 ${pathHtml}
 
@@ -507,6 +557,10 @@ function buildPersonForm(p) {
 <div class="form-group">
   <label>${t("form-notes")}</label>
   <textarea id="f-notes" rows="3" placeholder="${t("form-notes-placeholder")}">${_escHtml(p?.notes)}</textarea>
+</div>
+<div class="form-group">
+  <label>${t("form-tags")}</label>
+  <input id="f-tags" type="text" value="${escAttr((p?.tags || []).join(", "))}" placeholder="${t("form-tags-placeholder")}" />
 </div>`;
 }
 
@@ -533,7 +587,8 @@ function showModal(title, bodyHTML, onConfirm, confirmLabel) {
                 birth:  document.getElementById("f-birth")?.value   || "",
                 death:  document.getElementById("f-death")?.value   || "",
                 notes:  document.getElementById("f-notes")?.value.trim() || "",
-                photo:  document.getElementById("f-photo")?.value   || ""
+                photo:  document.getElementById("f-photo")?.value   || "",
+                tags:   (document.getElementById("f-tags")?.value || "").split(",").map(s => s.trim()).filter(Boolean)
             });
         } else {
             onConfirm();
@@ -609,6 +664,7 @@ function showStatsModal() {
 <div class="stats-charts">
   ${_buildGenderPie(s)}
   ${_buildGenBar(_data)}
+  ${_buildBirthDecadeHistogram(_data)}
 </div>
 ${s.maxChildrenPerson ? `
 <div class="stats-highlight">
@@ -730,6 +786,48 @@ function _buildGenBar(data) {
     return `<div class="chart-section">
   <div class="chart-title">${t("stats-gen-dist")}</div>
   <svg width="${CHART_W}" height="${svgH}" viewBox="0 0 ${CHART_W} ${svgH}" class="gen-bar-svg">${bars}</svg>
+</div>`;
+}
+
+// ─── 统计图表：出生年份十年分布直方图 ─────────────────────────────────────
+function _buildBirthDecadeHistogram(data) {
+    const withBirth = data.persons.filter(p => p.birth && !isNaN(parseInt(p.birth)));
+    if (withBirth.length < 2) return "";
+    const dark = document.body.classList.contains("dark-mode");
+
+    const decades = {};
+    withBirth.forEach(p => {
+        const decade = Math.floor(parseInt(p.birth) / 10) * 10;
+        decades[decade] = (decades[decade] || 0) + 1;
+    });
+    const keys = Object.keys(decades).map(Number).sort((a, b) => a - b);
+    const maxCount = Math.max(...Object.values(decades));
+
+    const BAR_W = 24, GAP = 5, PAD_L = 8, PAD_R = 8, PAD_T = 18, PAD_B = 28, CHART_H = 72;
+    const totalW = PAD_L + keys.length * (BAR_W + GAP) - GAP + PAD_R;
+    const svgH   = PAD_T + CHART_H + PAD_B;
+
+    const textFill = dark ? "#94a3b8" : "#64748b";
+    const valFill  = dark ? "#cbd5e1" : "#334155";
+
+    let bars = "";
+    keys.forEach((decade, i) => {
+        const count = decades[decade];
+        const barH = maxCount > 0 ? Math.max(3, Math.round((count / maxCount) * CHART_H)) : 0;
+        const x = PAD_L + i * (BAR_W + GAP);
+        const y = PAD_T + CHART_H - barH;
+        const col = count === maxCount ? "#f59e0b" : "#3b82f6";
+        bars += `<rect x="${x}" y="${y}" width="${BAR_W}" height="${barH}" rx="3" fill="${col}" opacity="0.85"/>`;
+        if (count > 0) bars += `<text x="${x + BAR_W / 2}" y="${y - 4}" text-anchor="middle" font-size="8" font-weight="600" fill="${valFill}">${count}</text>`;
+        const label = `${decade % 100 === 0 ? decade : "'" + String(decade).slice(-2)}s`;
+        bars += `<text x="${x + BAR_W / 2}" y="${PAD_T + CHART_H + 14}" text-anchor="middle" font-size="8" fill="${textFill}">${label}</text>`;
+    });
+
+    return `<div class="chart-section birth-hist-section">
+  <div class="chart-title">${t("stats-birth-dist")}</div>
+  <div class="birth-hist-scroll">
+    <svg width="${totalW}" height="${svgH}" viewBox="0 0 ${totalW} ${svgH}" class="birth-hist-svg">${bars}</svg>
+  </div>
 </div>`;
 }
 

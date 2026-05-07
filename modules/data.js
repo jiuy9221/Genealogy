@@ -101,6 +101,7 @@ function exportMarkdown(data) {
         md += `- 出生: ${p.birth || "不详"}\n`;
         if (p.death) md += `- 死亡: ${p.death}\n`;
         if (p.notes) md += `- 备注: ${p.notes}\n`;
+        if (p.tags && p.tags.length) md += `- 标签: ${p.tags.join(", ")}\n`;
         if (p.events && p.events.length) {
             md += "- 生平事件:\n";
             const sorted = [...p.events].sort((a, b) => (parseInt(a.year) || 0) - (parseInt(b.year) || 0));
@@ -136,7 +137,7 @@ function parseMarkdown(text) {
         const trimmed = line.trim();
         if (trimmed.startsWith("### ")) {
             if (currentPerson) data.persons.push(currentPerson);
-            currentPerson = { id: "", name: trimmed.slice(4), gender: "", birth: "", death: "", notes: "" };
+            currentPerson = { id: "", name: trimmed.slice(4), gender: "", birth: "", death: "", notes: "", tags: [], events: [] };
         } else if (currentPerson) {
             if (trimmed.startsWith("- ID:")) currentPerson.id = trimmed.slice(5).trim();
             else if (trimmed.startsWith("- 性别:")) {
@@ -145,6 +146,7 @@ function parseMarkdown(text) {
             } else if (trimmed.startsWith("- 出生:")) currentPerson.birth = trimmed.slice(4).trim() === "不详" ? "" : trimmed.slice(4).trim();
             else if (trimmed.startsWith("- 死亡:")) currentPerson.death = trimmed.slice(4).trim();
             else if (trimmed.startsWith("- 备注:")) currentPerson.notes = trimmed.slice(4).trim();
+            else if (trimmed.startsWith("- 标签:")) currentPerson.tags = trimmed.slice(4).trim().split(",").map(s => s.trim()).filter(Boolean);
         }
     });
     if (currentPerson) data.persons.push(currentPerson);
@@ -190,7 +192,7 @@ function downloadBlob(blob, filename) {
 }
 
 function addPerson(data, fields) {
-    const person = { id: generateId(), name: "", gender: "", birth: "", death: "", notes: "", events: [], ...fields };
+    const person = { id: generateId(), name: "", gender: "", birth: "", death: "", notes: "", events: [], tags: [], ...fields };
     data.persons.push(person);
     return person;
 }

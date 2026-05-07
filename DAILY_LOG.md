@@ -276,3 +276,30 @@
   - 时间轴事件菱形点击展开事件详情浮层
   - 统计图表（性别分布饼图、代际柱状图）嵌入统计面板
   - 批量选中多个节点进行批量操作（移动/导出子树）
+
+## 2026-05-07
+- 更新文件：modules/data.js、modules/ui.js、modules/tree.js、modules/i18n.js、style.css、index.html
+- 新增功能：
+  - **人员标签系统（Person Tags）**（data.js + ui.js + tree.js + i18n.js + style.css + index.html）：
+    - `data.js`：`addPerson` 默认携带 `tags: []` 字段；`parseMarkdown` 在解析人员时初始化 `tags: []` 并解析 `- 标签: tag1, tag2` 行；`exportMarkdown` 若人员拥有标签则输出 `- 标签: ...` 行；标签数据随 JSON 导入导出全程保留。
+    - `ui.js`：
+      - 模块顶部新增 `_tagFilter` 状态变量与 `_tagColor(tag)` 函数（确定性哈希 → 10 色调色板）；
+      - `init` → `bindTagFilter()`：绑定 `#tag-filter` 下拉框 `change` 事件，切换标签筛选；
+      - `renderPersonList` 扩展：①按 `_tagFilter` 二次过滤人员列表；②动态重建 `#tag-filter` 下拉框选项（仅含当前族谱中实际存在的标签，0 标签时隐藏）；③人员条目末尾追加最多 4 个彩色小圆点（`.person-tag-dot`），鼠标悬停显示标签名；④搜索计数在标签筛选激活时同样生效；
+      - `renderPersonEditor` 新增 `tagsHtml`：若人员有标签，在信息表下方渲染 `.tags-view-section`，包含彩色圆角 `.tag-chip` 标签块；点击任意 chip 即触发 `#tag-filter` 联动筛选人员列表；
+      - `buildPersonForm` 新增 `Tags` 文本输入字段（`#f-tags`），显示现有标签（逗号分隔），保存时自动解析为数组；
+      - `showModal` 确认回调新增 `tags` 字段提取（`f-tags` → `split(",") → trim → filter`）；
+    - `tree.js`：`_renderNodeGroup` 新增 `_tagColorTree(tag)` 颜色函数（与 ui.js 算法一致）；在节点底部居中绘制最多 5 个彩色小圆（`.tag-dot`），各带 SVG `<title>` tooltip，`pointer-events: none` 不干扰点击与拖拽；
+    - `index.html`：搜索栏下方新增 `<select id="tag-filter">` 下拉框，初始仅含「所有标签」占位选项，由 `renderPersonList` 动态填充；
+    - `style.css` 新增 13 条规则：`.person-tag-dots`、`.person-tag-dot`、`.tag-filter-select`（+focus+dark）、`.tags-view-section`（+h5）、`.tag-chips-row`、`.tag-chip`（+hover）；
+    - `i18n.js` 三语各新增 5 个键（`form-tags`、`form-tags-placeholder`、`editor-section-tags`、`filter-all-tags`、`toast-tag-filter`，共 15 条翻译）。
+  - **出生年份十年分布直方图（Birth Decade Histogram）**（ui.js + i18n.js + style.css）：
+    - `_buildBirthDecadeHistogram(data)` 函数：统计各十年间（1800s/1900s/1910s…）的出生人数；以 SVG 竖向柱状图呈现（支持横向滚动容器适配数量多的情况）；最高柱用琥珀色高亮，其余柱用蓝色；亮/暗主题文字颜色自动适配；少于 2 名有出生年份者自动跳过不渲染；
+    - 嵌入 `showStatsModal` 的 `.stats-charts` 区块（位于代际柱状图之后）；
+    - `style.css` 新增 `.birth-hist-section`、`.birth-hist-scroll`（`overflow-x: auto`）、`.birth-hist-svg` 共 3 条规则；
+    - `i18n.js` 三语各新增 1 个键（`stats-birth-dist`，共 3 条翻译）。
+- 下一步：
+  - 批量节点操作（Ctrl+单击多选 → 批量删除/导出子树）
+  - 姓氏排行榜（统计面板中显示 Top-5 姓氏）
+  - 关系强度可视化（连线粗细或颜色随代际深度变化）
+  - 移动端底部快捷操作栏（添加人员、搜索、切换视图）
