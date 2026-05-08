@@ -423,6 +423,10 @@ function setupKeyboard() {
 
 // ─── 额外按钮绑定 ──────────────────────────────────────────────────────────
 function setupExtraButtons() {
+    document.getElementById("btn-export-html").addEventListener("click", () => {
+        exportStandaloneHTML(familyData);
+        showToast(t("toast-html-exported"));
+    });
     document.getElementById("btn-stats").addEventListener("click", showStatsModal);
     const hcBtn = document.getElementById("btn-health-check");
     if (hcBtn) hcBtn.addEventListener("click", () => window.showHealthCheckModal && window.showHealthCheckModal());

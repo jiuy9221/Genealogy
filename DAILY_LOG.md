@@ -441,3 +441,27 @@
   - 节点批量移动（拖选多节点同步平移）
   - 导出 PDF（@media print 增强或 jsPDF）
   - 人员合并功能（将两个重复条目合并为一个）
+
+## 2026-05-08 (第六次推进)
+- 更新文件：modules/data.js、modules/ui.js、modules/i18n.js、style.css、index.html、app.js
+- 新增功能：
+  - **人员合并功能（Person Merge）**（data.js + ui.js + style.css + i18n.js）：
+    - `data.js` 新增 `mergePerson(data, keepId, mergeId)` 函数：将 mergeId 的所有字段（gender/birth/death/notes/photo，空则覆盖）、标签（取并集）、生平事件（追加并重新生成 ID）合并到 keepId；重定向所有亲子关系（parent/child 字段替换 mergeId → keepId）并去重、去自指；重定向所有婚姻关系并去自婚、去重；最后删除 mergeId 人员；
+    - `ui.js` 新增 `window.showMergePersonDialog(keepId)` 弹窗：显示「保留 vs 合并」双列预览卡（实时选择更新），保留方显示正常样式，被合并方带删除线标注；内嵌 confirm() 二次确认后执行合并，支持撤销；编辑面板 `editor-actions` 区域新增橙色「合并」按钮（`btn-merge`）；
+    - `style.css` 新增 16 条规则（`.merge-dialog`、`.merge-preview-content`、`.merge-preview-side`、`.merge-arrow`、`.merge-warning`、`.btn-merge`，亮/暗各适配）；
+    - `i18n.js` 三语各新增 15 个键（共 45 条翻译）。
+  - **导出独立 HTML 报告（Standalone HTML Export）**（data.js + ui.js + index.html + style.css + i18n.js + app.js）：
+    - `data.js` 新增 `exportStandaloneHTML(data)` 函数：BFS 计算代际层级图，按代际分组所有成员，为每人生成信息卡片（头像/姓名/生卒/父母/配偶/子女/标签/备注/生平事件），构建完整 self-contained HTML（内嵌 CSS，无外部依赖），顶部展示家族统计卡（成员总数/代数/男/女/婚姻记录），支持响应式布局和 @media print；
+    - `index.html` 顶栏导出区新增 `#btn-export-html`（蓝色渐变按钮「导出 HTML」）；
+    - `app.js` `setupExtraButtons` 新增 `btn-export-html` 点击事件（调用 `exportStandaloneHTML` + Toast）；
+    - `style.css` 新增 `.btn-export-html` 蓝色渐变样式；
+    - `i18n.js` 三语各新增 2 个键（`btn-export-html`、`toast-html-exported`）。
+  - **代际编号徽章（Generation Badges in Person List）**（ui.js + style.css + i18n.js）：
+    - `ui.js` `renderPersonList` 中将代际 BFS 提前统一计算（不再仅限于 "gen" 排序模式），为每个人员列表项追加 `<span class="gen-badge">G{n}</span>`（如 G1/G2/G3…）；
+    - `style.css` 新增 `.gen-badge` 样式（灰色圆角徽章，亮/暗适配）；
+    - `i18n.js` 三语各新增 1 个键（`gen-badge-title`，如「第 N 代」）。
+- 下一步：
+  - 节点批量平移（框选多节点同步拖拽）
+  - 导出 PDF（jsPDF 或 @media print 增强）
+  - 关系标注类型（兄弟/姐妹/祖父母等显式连线标签）
+  - 树节点搜索高亮（搜索后族谱树中同步高亮匹配节点）

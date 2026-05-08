@@ -2177,4 +2177,102 @@ body.dark-mode .marriage-year-input {
 }
 .btn-muted:hover { background: #f1f5f9; color: #64748b; }
 body.dark-mode .btn-muted { border-color: #334155; color: #64748b; }
+
+/* ─── 人员合并按钮 ──────────────────────────────────────────────────────────── */
+.btn-merge {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1.5px solid #fed7aa;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background .15s, border-color .15s;
+}
+.btn-merge:hover { background: #ffedd5; border-color: #fdba74; }
+body.dark-mode .btn-merge { background: #431407; color: #fb923c; border-color: #7c2d12; }
+body.dark-mode .btn-merge:hover { background: #5b1b08; }
+
+/* ─── 人员合并对话框 ────────────────────────────────────────────────────────── */
+.merge-dialog { display: flex; flex-direction: column; gap: 14px; }
+.merge-info { font-size: 14px; color: var(--color-text, #1e293b); }
+.merge-select-row { display: flex; flex-direction: column; gap: 6px; }
+.merge-select-label { font-size: 13px; font-weight: 600; color: var(--color-text, #1e293b); }
+.merge-select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid var(--color-border, #e0e3e8);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--color-surface, #fff);
+    color: var(--color-text, #1e293b);
+}
+.merge-select:focus {
+    outline: none;
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245,158,11,.15);
+}
+body.dark-mode .merge-select { background: #1e293b; border-color: #475569; color: #e2e8f0; }
+.merge-preview { min-height: 4px; }
+.merge-preview-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--color-bg, #f8fafc);
+    border: 1px solid var(--color-border, #e0e3e8);
+    border-radius: 10px;
+    flex-wrap: wrap;
+}
+body.dark-mode .merge-preview-content { background: #0f172a; }
+.merge-preview-side { flex: 1; text-align: center; min-width: 90px; }
+.merge-preview-side-del .merge-preview-name { text-decoration: line-through; color: #94a3b8; }
+.merge-preview-label {
+    font-size: 11px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: 4px;
+}
+.merge-preview-name { font-size: 15px; font-weight: 700; color: var(--color-text, #1e293b); }
+.merge-preview-detail { font-size: 12px; color: #64748b; margin-top: 2px; }
+.merge-arrow { color: #f59e0b; font-weight: 700; font-size: 13px; white-space: nowrap; padding: 0 4px; }
+.merge-warning {
+    font-size: 12px;
+    color: #b45309;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 8px 12px;
+    line-height: 1.5;
+}
+body.dark-mode .merge-warning { background: #451a03; color: #fbbf24; border-color: #92400e; }
+
+/* ─── 导出 HTML 按钮 ────────────────────────────────────────────────────────── */
+.btn-export-html {
+    background: linear-gradient(135deg, #1e3a5f, #2563eb);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+}
+.btn-export-html:hover { opacity: .88; }
+body.dark-mode .btn-export-html { background: linear-gradient(135deg, #1e3a8a, #3b82f6); }
+
+/* ─── 代际徽章（人员列表）────────────────────────────────────────────────────── */
+.gen-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    margin-right: 3px;
+    vertical-align: middle;
+    letter-spacing: .03em;
+    flex-shrink: 0;
+}
+body.dark-mode .gen-badge { background: #1e293b; color: #94a3b8; border-color: #334155; }
 body.dark-mode .btn-muted:hover { background: #1e293b; color: #94a3b8; }

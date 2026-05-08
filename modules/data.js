@@ -472,6 +472,212 @@ function computeStats(data) {
     return { total, males, females, unknown, generations, marriages, avgLifespan, maxChildrenPerson, maxChildren, oldest };
 }
 
+// ─── 人员合并 ─────────────────────────────────────────────────────────────────
+// 将 mergeId 的所有数据、关系合并到 keepId，然后删除 mergeId
+function mergePerson(data, keepId, mergeId) {
+    if (keepId === mergeId) return false;
+    const keep  = data.persons.find(p => p.id === keepId);
+    const merge = data.persons.find(p => p.id === mergeId);
+    if (!keep || !merge) return false;
+
+    // Copy scalar fields from merge → keep where keep is empty
+    if (!keep.gender && merge.gender) keep.gender = merge.gender;
+    if (!keep.birth  && merge.birth)  keep.birth  = merge.birth;
+    if (!keep.death  && merge.death)  keep.death  = merge.death;
+    if (!keep.notes  && merge.notes)  keep.notes  = merge.notes;
+    if (!keep.photo  && merge.photo)  keep.photo  = merge.photo;
+
+    // Merge tags (union)
+    keep.tags = [...new Set([...(keep.tags || []), ...(merge.tags || [])])];
+
+    // Append events from merge (with fresh IDs)
+    if (!keep.events) keep.events = [];
+    (merge.events || []).forEach(ev => {
+        keep.events.push({ ...ev, id: generateId() });
+    });
+
+    // Redirect parent/child relationships
+    data.relationships.forEach(r => {
+        if (r.parent === mergeId) r.parent = keepId;
+        if (r.child  === mergeId) r.child  = keepId;
+    });
+    // Remove self-references and duplicate pairs
+    data.relationships = data.relationships
+        .filter(r => r.parent !== r.child)
+        .filter((r, i, arr) =>
+            arr.findIndex(x => x.parent === r.parent && x.child === r.child) === i
+        );
+
+    // Redirect marriages
+    data.marriages.forEach(m => {
+        if (m.spouse1 === mergeId) m.spouse1 = keepId;
+        if (m.spouse2 === mergeId) m.spouse2 = keepId;
+    });
+    // Remove self-marriages and duplicate marriage records
+    data.marriages = data.marriages
+        .filter(m => m.spouse1 !== m.spouse2)
+        .filter((m, i, arr) =>
+            arr.findIndex(x =>
+                (x.spouse1 === m.spouse1 && x.spouse2 === m.spouse2) ||
+                (x.spouse1 === m.spouse2 && x.spouse2 === m.spouse1)
+            ) === i
+        );
+
+    // Delete merged person
+    data.persons = data.persons.filter(p => p.id !== mergeId);
+    return true;
+}
+
+// ─── 独立 HTML 报告导出 ───────────────────────────────────────────────────────
+function exportStandaloneHTML(data) {
+    const escH = s => (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    // Build generation level map (BFS from roots)
+    const parentsOf2  = id => data.relationships.filter(r => r.child  === id).map(r => r.parent);
+    const childrenOf2 = id => data.relationships.filter(r => r.parent === id).map(r => r.child);
+    const roots2 = data.persons.filter(p => parentsOf2(p.id).length === 0).map(p => p.id);
+    const levelMap2 = {};
+    const visited2  = new Set();
+    const queue2    = roots2.map(id => ({ id, level: 0 }));
+    while (queue2.length) {
+        const { id, level } = queue2.shift();
+        if (visited2.has(id)) { if (level > (levelMap2[id] ?? 0)) levelMap2[id] = level; continue; }
+        visited2.add(id);
+        levelMap2[id] = level;
+        childrenOf2(id).forEach(cid => queue2.push({ id: cid, level: level + 1 }));
+    }
+    data.persons.forEach(p => { if (levelMap2[p.id] === undefined) levelMap2[p.id] = 0; });
+
+    const maxLevel  = data.persons.length ? Math.max(...Object.values(levelMap2), 0) : 0;
+    const total     = data.persons.length;
+    const males     = data.persons.filter(p => p.gender === "male").length;
+    const females   = data.persons.filter(p => p.gender === "female").length;
+    const marriages = data.marriages.length;
+
+    // Group persons by generation
+    const byGen = {};
+    for (let i = 0; i <= maxLevel; i++) byGen[i] = [];
+    data.persons.forEach(p => {
+        const lv = levelMap2[p.id] ?? 0;
+        (byGen[lv] = byGen[lv] || []).push(p);
+    });
+
+    // Build a single person card
+    const buildCard = p => {
+        const parents = data.relationships.filter(r => r.child === p.id)
+            .map(r => data.persons.find(x => x.id === r.parent)?.name).filter(Boolean);
+        const children = data.relationships.filter(r => r.parent === p.id)
+            .map(r => data.persons.find(x => x.id === r.child)?.name).filter(Boolean);
+        const spouses = data.marriages
+            .filter(m => m.spouse1 === p.id || m.spouse2 === p.id)
+            .map(m => {
+                const sid = m.spouse1 === p.id ? m.spouse2 : m.spouse1;
+                const sp = data.persons.find(x => x.id === sid);
+                return sp ? (m.year ? `${sp.name}（${m.year}年）` : sp.name) : null;
+            }).filter(Boolean);
+
+        const gc     = p.gender === "male" ? "male" : p.gender === "female" ? "female" : "unknown";
+        const gicon  = p.gender === "male" ? "♂" : p.gender === "female" ? "♀" : "○";
+        const avatar = p.photo
+            ? `<img class="c-photo" src="${escH(p.photo)}" alt="照片">`
+            : `<div class="c-init ${gc}">${escH(p.name.charAt(0))}</div>`;
+        const ls = p.birth ? (p.death ? `${escH(p.birth)} — ${escH(p.death)}` : `b. ${escH(p.birth)}`) : "";
+        const tags = (p.tags || []).map(tg => `<span class="c-tag">${escH(tg)}</span>`).join("");
+        const evHtml = (p.events || []).length
+            ? `<ul class="c-evs">${[...(p.events||[])].sort((a,b)=>(parseInt(a.year)||0)-(parseInt(b.year)||0))
+                .map(ev=>`<li><b>${escH(ev.year||"?")}年</b> ${escH(ev.desc)}</li>`).join("")}</ul>`
+            : "";
+        return `<div class="c-card ${gc}">
+  <div class="c-av">${avatar}</div>
+  <div class="c-body">
+    <div class="c-name">${escH(p.name)} <span class="c-gicon">${gicon}</span></div>
+    ${ls ? `<div class="c-ls">${ls}</div>` : ""}
+    ${parents.length  ? `<div class="c-rel">父母: ${escH(parents.join("、"))}</div>` : ""}
+    ${spouses.length  ? `<div class="c-rel">配偶: ${escH(spouses.join("、"))}</div>` : ""}
+    ${children.length ? `<div class="c-rel">子女: ${escH(children.join("、"))}</div>` : ""}
+    ${tags ? `<div class="c-tags">${tags}</div>` : ""}
+    ${p.notes ? `<div class="c-notes">${escH(p.notes)}</div>` : ""}
+    ${evHtml}
+  </div>
+</div>`;
+    };
+
+    const genSections = Object.entries(byGen)
+        .sort(([a],[b]) => parseInt(a) - parseInt(b))
+        .map(([lv, persons]) => {
+            const num = parseInt(lv) + 1;
+            const cards = [...persons]
+                .sort((a,b) => a.name.localeCompare(b.name,"zh-CN"))
+                .map(buildCard).join("\n");
+            return `<section class="generation">
+  <h2 class="gen-h">第 ${num} 代 <span class="gen-cnt">${persons.length} 人</span></h2>
+  <div class="cards-grid">${cards}</div>
+</section>`;
+        }).join("\n");
+
+    const now = new Date().toLocaleDateString("zh-CN");
+    const css = `*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'PingFang SC','Microsoft YaHei','Hiragino Sans GB',Arial,sans-serif;background:#f0f4f8;color:#1e293b;min-width:320px}
+.ph{background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 100%);color:#fff;padding:40px 32px 28px;text-align:center}
+.pt{font-size:2.2rem;font-weight:700;letter-spacing:.1em;margin-bottom:8px}
+.ps{font-size:1rem;opacity:.8}
+.sb{display:flex;justify-content:center;gap:32px;margin-top:20px;flex-wrap:wrap}
+.si{text-align:center}.sn{font-size:1.6rem;font-weight:700}.sl{font-size:.8rem;opacity:.75;margin-top:2px}
+.container{max-width:1200px;margin:0 auto;padding:24px 16px}
+.generation{margin-bottom:40px}
+.gen-h{font-size:1.25rem;font-weight:700;padding:10px 16px;background:linear-gradient(90deg,#2563eb11,transparent);border-left:4px solid #2563eb;margin-bottom:16px;border-radius:0 8px 8px 0}
+.gen-cnt{font-size:.85rem;font-weight:400;color:#64748b;margin-left:8px}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.c-card{background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.04);display:flex;gap:12px;padding:14px;border-top:3px solid #94a3b8}
+.c-card.male{border-top-color:#3b82f6}.c-card.female{border-top-color:#ec4899}
+.c-av{flex-shrink:0}
+.c-photo{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid #e2e8f0}
+.c-init{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;border:2px solid #e2e8f0}
+.c-init.male{background:#eff6ff;color:#3b82f6;border-color:#bfdbfe}
+.c-init.female{background:#fdf2f8;color:#ec4899;border-color:#fbcfe8}
+.c-init.unknown{background:#f1f5f9;color:#64748b;border-color:#e2e8f0}
+.c-body{flex:1;min-width:0}
+.c-name{font-size:1rem;font-weight:700;color:#0f172a}
+.c-gicon{color:#94a3b8;font-size:.9rem;margin-left:4px}
+.c-ls{font-size:.8rem;color:#64748b;margin-top:2px}
+.c-rel{font-size:.82rem;color:#475569;margin-top:3px;line-height:1.4}
+.c-tags{margin-top:4px;display:flex;flex-wrap:wrap;gap:4px}
+.c-tag{font-size:.72rem;padding:1px 8px;border-radius:999px;background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe}
+.c-notes{font-size:.8rem;color:#64748b;margin-top:4px;font-style:italic;white-space:pre-wrap}
+.c-evs{margin-top:6px;padding-left:14px;font-size:.78rem;color:#64748b;line-height:1.6}
+.pf{text-align:center;padding:32px;font-size:.82rem;color:#94a3b8;border-top:1px solid #e2e8f0;margin-top:16px}
+@media(max-width:480px){.cards-grid{grid-template-columns:1fr}.ph{padding:24px 16px 16px}.pt{font-size:1.6rem}}
+@media print{body{background:#fff}.c-card{break-inside:avoid;box-shadow:none;border:1px solid #e2e8f0}}`;
+
+    const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>族谱报告</title>
+<style>${css}</style>
+</head>
+<body>
+<header class="ph">
+  <div class="pt">家族族谱</div>
+  <div class="ps">导出于 ${now}</div>
+  <div class="sb">
+    <div class="si"><div class="sn">${total}</div><div class="sl">成员 / ${maxLevel + 1} 代</div></div>
+    <div class="si"><div class="sn">${males}</div><div class="sl">男性</div></div>
+    <div class="si"><div class="sn">${females}</div><div class="sl">女性</div></div>
+    <div class="si"><div class="sn">${marriages}</div><div class="sl">婚姻记录</div></div>
+  </div>
+</header>
+<div class="container">
+${genSections}
+</div>
+<footer class="pf">族谱 · 离线家族树 · 导出于 ${now}</footer>
+</body>
+</html>`;
+
+    downloadBlob(new Blob([html], { type: "text/html" }), "family-report.html");
+}
+
 // ─── 数据健康检查 ─────────────────────────────────────────────────────────────
 function dataHealthCheck(data) {
     const issues = [];

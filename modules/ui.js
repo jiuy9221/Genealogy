@@ -317,22 +317,20 @@ function renderPersonList(data) {
         return;
     }
 
-    // ─── 多维度排序 ───────────────────────────────────────────────────────
+    // ─── 代际层级 BFS（始终计算，供徽章 + 排序共用）─────────────────────────────
+    const _parentsOf  = id => _data.relationships.filter(r => r.child  === id).map(r => r.parent);
+    const _childrenOf = id => _data.relationships.filter(r => r.parent === id).map(r => r.child);
+    const _roots = _data.persons.filter(p => _parentsOf(p.id).length === 0).map(p => p.id);
     let levelMap = {};
-    if (_sortMode === "gen") {
-        const parentsOf  = id => _data.relationships.filter(r => r.child  === id).map(r => r.parent);
-        const childrenOf = id => _data.relationships.filter(r => r.parent === id).map(r => r.child);
-        const roots = _data.persons.filter(p => parentsOf(p.id).length === 0).map(p => p.id);
-        const visited = new Set();
-        const queue = roots.map(id => ({ id, level: 0 }));
-        while (queue.length) {
-            const { id, level } = queue.shift();
-            if (visited.has(id)) { if (level > (levelMap[id] ?? 0)) levelMap[id] = level; continue; }
-            visited.add(id); levelMap[id] = level;
-            childrenOf(id).forEach(cid => queue.push({ id: cid, level: level + 1 }));
-        }
-        _data.persons.forEach(p => { if (levelMap[p.id] === undefined) levelMap[p.id] = 0; });
+    const _vis2 = new Set();
+    const _q2 = _roots.map(id => ({ id, level: 0 }));
+    while (_q2.length) {
+        const { id, level } = _q2.shift();
+        if (_vis2.has(id)) { if (level > (levelMap[id] ?? 0)) levelMap[id] = level; continue; }
+        _vis2.add(id); levelMap[id] = level;
+        _childrenOf(id).forEach(cid => _q2.push({ id: cid, level: level + 1 }));
     }
+    _data.persons.forEach(p => { if (levelMap[p.id] === undefined) levelMap[p.id] = 0; });
 
     const sorted = [...persons];
     if (_sortMode === "birth-asc") {
@@ -372,8 +370,12 @@ function renderPersonList(data) {
             `<span class="person-tag-dot" style="background:${_tagColor(tag)}" title="${_escHtml(tag)}"></span>`
         ).join("");
         const tagDotsHtml = tagDots ? `<span class="person-tag-dots">${tagDots}</span>` : "";
+        const lv = levelMap[p.id];
+        const genBadgeHtml = lv !== undefined
+            ? `<span class="gen-badge" title="${t('gen-badge-title').replace('{n}', lv + 1)}">G${lv + 1}</span>`
+            : "";
         if (_selectedIds.has(p.id)) li.classList.add("batch-selected");
-        li.innerHTML = `<span class="person-name">${_searchQuery ? highlightMatch(p.name, _searchQuery) : _escHtml(p.name)}</span>${birthYr}${gTag}${tagDotsHtml}`;
+        li.innerHTML = `<span class="person-name">${_searchQuery ? highlightMatch(p.name, _searchQuery) : _escHtml(p.name)}</span>${birthYr}${genBadgeHtml}${gTag}${tagDotsHtml}`;
         li.addEventListener("click", e => {
             if (e.ctrlKey || e.metaKey) {
                 if (_selectedIds.has(p.id)) _selectedIds.delete(p.id);
@@ -581,6 +583,8 @@ function renderPersonEditor(id) {
       <button class="btn-sm btn-focus${window.isFocusActive && window.isFocusActive(id) ? " active" : ""}"
               onclick="window.toggleFocusMode && window.toggleFocusMode('${id}')"
               title="${t('focus-btn')}">🎯</button>
+      <button class="btn-sm btn-merge" onclick="showMergePersonDialog('${id}')"
+              title="${t('merge-btn-title')}">${t("merge-btn")}</button>
       <button class="btn-sm btn-danger"  onclick="confirmDeletePerson('${id}')">${t("editor-delete-btn")}</button>
     </div>
   </div>
@@ -1552,6 +1556,79 @@ window.doFindPath = function(fromId) {
             : "";
         return `<span class="${cls}" onclick="selectPerson('${step.id}')" title="${name}">${name}</span>${sep}`;
     }).join("");
+};
+
+// ─── 人员合并对话框 ────────────────────────────────────────────────────────────
+window.showMergePersonDialog = function(keepId) {
+    const keep = _data.persons.find(p => p.id === keepId);
+    if (!keep) return;
+
+    const others = _data.persons
+        .filter(p => p.id !== keepId)
+        .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+
+    if (!others.length) { showToast(t("toast-merge-no-others")); return; }
+
+    const opts = others.map(p =>
+        `<option value="${p.id}">${_escHtml(p.name)}${p.birth ? ` (${String(p.birth).slice(0,4)})` : ""}${p.gender === "male" ? " ♂" : p.gender === "female" ? " ♀" : ""}</option>`
+    ).join("");
+
+    const bodyHTML = `
+<div class="merge-dialog">
+  <p class="merge-info">${_escHtml(t("merge-info").replace("{name}", keep.name))}</p>
+  <div class="merge-select-row">
+    <label class="merge-select-label">${t("merge-select-label")}</label>
+    <select id="sel-merge-target" class="merge-select">
+      <option value="">${t("merge-select-placeholder")}</option>
+      ${opts}
+    </select>
+  </div>
+  <div id="merge-preview" class="merge-preview"></div>
+  <div class="merge-warning">${t("merge-warning")}</div>
+</div>`;
+
+    showModal(t("merge-title"), bodyHTML, () => {
+        const mergeId = document.getElementById("sel-merge-target")?.value;
+        if (!mergeId) { showToast(t("merge-no-target")); return; }
+        const mergeP = _data.persons.find(p => p.id === mergeId);
+        if (!mergeP) return;
+        if (!confirm(t("merge-confirm").replace("{keep}", keep.name).replace("{merge}", mergeP.name))) return;
+        const ok = mergePerson(_data, keepId, mergeId);
+        if (ok) {
+            _onDataChange(_data);
+            renderPersonEditor(keepId);
+            showToast(t("toast-merged").replace("{keep}", keep.name).replace("{merge}", mergeP.name));
+        }
+    }, t("merge-confirm-btn"));
+
+    // Live preview on selection change
+    setTimeout(() => {
+        const sel = document.getElementById("sel-merge-target");
+        if (!sel) return;
+        sel.addEventListener("change", () => {
+            const pid = sel.value;
+            const preview = document.getElementById("merge-preview");
+            if (!preview) return;
+            if (!pid) { preview.innerHTML = ""; return; }
+            const p = _data.persons.find(x => x.id === pid);
+            if (!p) return;
+            const gI = g => g === "male" ? "♂" : g === "female" ? "♀" : "○";
+            preview.innerHTML = `
+<div class="merge-preview-content">
+  <div class="merge-preview-side">
+    <div class="merge-preview-label">${t("merge-keep-label")}</div>
+    <div class="merge-preview-name">${_escHtml(keep.name)}</div>
+    <div class="merge-preview-detail">${keep.birth ? String(keep.birth).slice(0,4) : "—"} ${gI(keep.gender)}</div>
+  </div>
+  <div class="merge-arrow">← ${t("merge-absorbs")} ←</div>
+  <div class="merge-preview-side merge-preview-side-del">
+    <div class="merge-preview-label">${t("merge-remove-label")}</div>
+    <div class="merge-preview-name">${_escHtml(p.name)}</div>
+    <div class="merge-preview-detail">${p.birth ? String(p.birth).slice(0,4) : "—"} ${gI(p.gender)}</div>
+  </div>
+</div>`;
+        });
+    }, 50);
 };
 
 // selectPerson 供外部调用
